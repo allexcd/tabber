@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Tab Grouper - Settings</title>
+  <link rel="stylesheet" href="settings.css">
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🗂️ AI Tab Grouper</h1>
+      <p class="subtitle">Configure your AI provider to automatically organize tabs</p>
+    </header>
+
+    <main>
+      <!-- Enable/Disable Toggle -->
+      <section class="card">
+        <div class="toggle-row">
+          <div>
+            <h2>Enable Extension</h2>
+            <p class="description">Automatically group new tabs using AI</p>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="enabled">
+            <span class="slider"></span>
+          </label>
+        </div>
+      </section>
+
+      <!-- Provider Selection -->
+      <section class="card">
+        <h2>AI Provider</h2>
+        <p class="description">Select which AI service to use for tab grouping</p>
+        
+        <div class="default-provider">
+          <label for="default-provider">Default Provider:</label>
+          <select id="default-provider">
+            <option value="">-- Select Default --</option>
+            <option value="openai">OpenAI</option>
+            <option value="claude">Claude</option>
+            <option value="local">Local LLM</option>
+          </select>
+          <p class="hint">This provider will be auto-selected when you enable the extension</p>
+        </div>
+        
+        <div class="provider-options">
+          <label class="provider-option">
+            <input type="radio" name="provider" value="openai">
+            <div class="provider-card">
+              <span class="provider-icon">🤖</span>
+              <span class="provider-name">OpenAI</span>
+              <span class="provider-desc">GPT-4, GPT-3.5</span>
+            </div>
+          </label>
+
+          <label class="provider-option">
+            <input type="radio" name="provider" value="claude">
+            <div class="provider-card">
+              <span class="provider-icon">🎭</span>
+              <span class="provider-name">Claude</span>
+              <span class="provider-desc">Anthropic</span>
+            </div>
+          </label>
+
+          <label class="provider-option">
+            <input type="radio" name="provider" value="local">
+            <div class="provider-card">
+              <span class="provider-icon">🏠</span>
+              <span class="provider-name">Local LLM</span>
+              <span class="provider-desc">Ollama, LM Studio</span>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <!-- OpenAI Settings -->
+      <section class="card provider-settings" id="openai-settings">
+        <h2>OpenAI Configuration</h2>
+        
+        <div class="form-group">
+          <label for="openai-key">API Key</label>
+          <input type="password" id="openai-key" placeholder="sk-...">
+          <p class="hint">Get your API key from <a href="https://platform.openai.com/api-keys" target="_blank">OpenAI Dashboard</a></p>
+        </div>
+
+        <div class="form-group">
+          <label for="openai-model">Model</label>
+          <select id="openai-model">
+            <option value="gpt-4o-mini">GPT-4o Mini (Recommended)</option>
+            <option value="gpt-4o">GPT-4o</option>
+            <option value="gpt-4-turbo">GPT-4 Turbo</option>
+            <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Claude Settings -->
+      <section class="card provider-settings" id="claude-settings">
+        <h2>Claude Configuration</h2>
+        
+        <div class="form-group">
+          <label for="claude-key">API Key</label>
+          <input type="password" id="claude-key" placeholder="sk-ant-...">
+          <p class="hint">Get your API key from <a href="https://console.anthropic.com/" target="_blank">Anthropic Console</a></p>
+        </div>
+
+        <div class="form-group">
+          <label for="claude-model">Model</label>
+          <select id="claude-model">
+            <option value="claude-3-haiku-20240307">Claude 3 Haiku (Fast & Cheap)</option>
+            <option value="claude-3-5-sonnet-20241022">Claude 3.5 Sonnet</option>
+            <option value="claude-3-opus-20240229">Claude 3 Opus</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Local LLM Settings -->
+      <section class="card provider-settings" id="local-settings">
+        <h2>Local LLM Configuration</h2>
+        
+        <div class="form-group">
+          <label for="local-url">Server URL</label>
+          <input type="text" id="local-url" placeholder="http://localhost:11434">
+          <p class="hint">The URL where your local LLM server is running</p>
+        </div>
+
+        <div class="form-group">
+          <label for="local-model">Model Name</label>
+          <input type="text" id="local-model" placeholder="llama3.2, mistral, etc.">
+          <p class="hint">The exact model name as configured in your server</p>
+        </div>
+
+        <div class="form-group">
+          <label for="local-api-format">API Format</label>
+          <select id="local-api-format">
+            <option value="openai">OpenAI Compatible (LM Studio, LocalAI)</option>
+            <option value="ollama">Ollama Native</option>
+          </select>
+        </div>
+      </section>
+
+      <!-- Actions -->
+      <section class="card actions">
+        <button id="save-btn" class="btn primary">Save Settings</button>
+        <button id="test-btn" class="btn secondary">Test Connection</button>
+      </section>
+
+      <!-- Status -->
+      <div id="status" class="status hidden"></div>
+    </main>
+
+    <footer>
+      <p>AI Tab Grouper v1.0.0</p>
+    </footer>
+  </div>
+
+  <script src="settings.js"></script>
+</body>
+</html>

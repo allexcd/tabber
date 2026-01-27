@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Tab Grouper</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <header>
+      <h1>🗂️ AI Tab Grouper</h1>
+    </header>
+
+    <main>
+      <div class="status-card" id="status-card">
+        <div class="status-indicator" id="status-indicator"></div>
+        <div class="status-text">
+          <span id="status-label">Checking...</span>
+          <span id="provider-label" class="provider"></span>
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="toggle-btn" class="btn primary">
+          <span id="toggle-text">Enable</span>
+        </button>
+        <button id="reprocess-btn" class="btn secondary">
+          Regroup Tab
+        </button>
+      </div>
+
+      <button id="group-all-btn" class="btn full-width">
+        📑 Group All Open Tabs
+      </button>
+
+      <button id="settings-btn" class="btn text">
+        ⚙️ Settings
+      </button>
+    </main>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

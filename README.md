@@ -1,0 +1,118 @@
+# AI Tab Grouper
+
+🗂️ Automatically organize your Chrome tabs using AI
+
+## Features
+
+- **🤖 AI-Powered Grouping**: Uses OpenAI, Claude, or local LLMs to intelligently categorize tabs
+- **🎨 Smart Color Coding**: Semantic colors based on content (blue=dev, green=finance, etc.)
+- **⚡ Real-time Processing**: New tabs are automatically grouped as they load
+- **🔄 Bulk Processing**: Group all existing tabs with one click
+- **⚙️ Multiple AI Providers**: Choose from OpenAI, Claude, or local LLMs (Ollama, LM Studio)
+
+## Installation
+
+### From Source
+1. Clone this repository
+2. Open Chrome and go to `chrome://extensions/`
+3. Enable **Developer mode** (top right toggle)
+4. Click **Load unpacked** and select the project folder
+5. Configure your AI provider in the extension settings
+
+### From Chrome Web Store
+Coming soon...
+
+## Configuration
+
+1. Click the extension icon → **Settings**
+2. Select your AI provider:
+   - **OpenAI**: Requires API key from [OpenAI Dashboard](https://platform.openai.com/api-keys)
+   - **Claude**: Requires API key from [Anthropic Console](https://console.anthropic.com/)
+   - **Local LLM**: Requires running Ollama, LM Studio, or compatible server
+3. Enter your credentials and save
+4. Toggle **Enable Extension** on
+
+## Usage
+
+- **Automatic**: New tabs are grouped automatically when enabled
+- **Manual**: Click "Regroup Tab" to reprocess the current tab
+- **Bulk**: Click "Group All Open Tabs" to organize all existing tabs
+
+## AI Provider Setup
+
+### OpenAI
+```
+API Key: sk-...
+Models: gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-3.5-turbo
+```
+
+### Claude (Anthropic)
+```
+API Key: sk-ant-...
+Models: claude-3-haiku, claude-3.5-sonnet, claude-3-opus
+```
+
+### Local LLM
+```
+Server URL: http://localhost:11434 (Ollama)
+Model Name: llama3.2, mistral, etc.
+API Format: OpenAI Compatible or Ollama Native
+```
+
+## Group Colors
+
+| Color | Content Type |
+|-------|-------------|
+| 🔵 Blue | Development, coding, technical |
+| 🟢 Green | Finance, money, productivity |
+| 🔴 Red | Entertainment, videos, gaming |
+| 🟡 Yellow | Social media, communication |
+| 🟣 Purple | Education, learning, research |
+| 🩷 Pink | Shopping, lifestyle |
+| 🩵 Cyan | News, articles, reading |
+| 🟠 Orange | Work, business, professional |
+| ⚫ Grey | Utilities, settings, misc |
+
+## Privacy
+
+- Tab titles and URLs are sent to your chosen AI provider for analysis
+- No data is stored on external servers beyond the AI API calls
+- API keys are stored locally in Chrome's sync storage
+- The extension only processes tabs when enabled
+
+## Development
+
+### Project Structure
+```
+Tabber/
+├── manifest.json           # Extension manifest
+├── background.js           # Service worker (main logic)
+├── icons/                  # Extension icons
+├── popup/                  # Toolbar popup UI
+├── services/               # AI provider integrations
+└── settings/               # Options page
+```
+
+### Building
+No build process required - load directly as unpacked extension.
+
+## License
+
+MIT License - see LICENSE file for details
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Test thoroughly
+5. Submit a pull request
+
+## Changelog
+
+### v1.0.0
+- Initial release
+- Support for OpenAI, Claude, and local LLMs
+- Automatic and manual tab grouping
+- Smart color coding
+- Bulk processing of existing tabs

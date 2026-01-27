@@ -1,0 +1,146 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  color: #e4e4e7;
+  min-width: 280px;
+}
+
+.popup {
+  padding: 1rem;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+header h1 {
+  font-size: 1.1rem;
+  background: linear-gradient(90deg, #60a5fa, #a78bfa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.status-card {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.875rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  margin-bottom: 1rem;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #71717a;
+  flex-shrink: 0;
+}
+
+.status-indicator.active {
+  background: #22c55e;
+  box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
+}
+
+.status-indicator.inactive {
+  background: #ef4444;
+}
+
+.status-indicator.unconfigured {
+  background: #f59e0b;
+}
+
+.status-text {
+  display: flex;
+  flex-direction: column;
+}
+
+#status-label {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+.provider {
+  font-size: 0.75rem;
+  color: #a1a1aa;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.btn {
+  padding: 0.625rem 1rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn.primary {
+  flex: 1;
+  background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+  color: white;
+}
+
+.btn.primary:hover {
+  opacity: 0.9;
+}
+
+.btn.primary.danger {
+  background: linear-gradient(90deg, #ef4444, #dc2626);
+}
+
+.btn.secondary {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.1);
+  color: #e4e4e7;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.btn.text {
+  width: 100%;
+  background: transparent;
+  color: #a1a1aa;
+  font-size: 0.8rem;
+}
+
+.btn.text:hover {
+  color: #e4e4e7;
+}
+
+.btn.full-width {
+  width: 100%;
+  background: linear-gradient(90deg, #059669, #10b981);
+  color: white;
+  margin-bottom: 0.75rem;
+}
+
+.btn.full-width:hover {
+  opacity: 0.9;
+}
+
+.btn.full-width:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
