@@ -9,8 +9,15 @@
 <body>
   <div class="container">
     <header>
-      <h1>🗂️ AI Tab Grouper</h1>
-      <p class="subtitle">Configure your AI provider to automatically organize tabs</p>
+      <div class="header-row">
+        <div>
+          <h1>🗂️ AI Tab Grouper</h1>
+          <p class="subtitle">Configure your AI provider to automatically organize tabs</p>
+        </div>
+        <button type="button" class="icon-button" id="changelog-info" aria-label="View version history" title="View version history">
+          ℹ️
+        </button>
+      </div>
     </header>
 
     <main>
@@ -198,6 +205,22 @@
       <!-- Status -->
       <div id="status" class="status hidden"></div>
     </main>
+
+    <!-- Changelog Modal -->
+    <div class="modal hidden" id="changelog-modal" role="dialog" aria-modal="true" aria-labelledby="changelog-title">
+      <div class="modal-backdrop" data-close="true"></div>
+      <div class="modal-content">
+        <div class="modal-header">
+          <h2 id="changelog-title">Version History</h2>
+          <button type="button" class="icon-button" id="changelog-close" aria-label="Close version history">✕</button>
+        </div>
+        <div class="modal-body">
+          <div id="changelog-content" class="changelog-content">
+            <p class="loading">Loading changelog...</p>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <footer>
       <p>AI Tab Grouper v1.0.0</p>
