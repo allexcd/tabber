@@ -73,6 +73,13 @@ Model Name: llama3.2, mistral, etc.
 API Format: OpenAI Compatible or Ollama Native
 ```
 
+**LM Studio Setup:**
+1. Start your model server in LM Studio
+2. Go to **Server Settings** → **Developer** section
+3. **Enable CORS** (required for browser extensions)
+4. Use API Format: "OpenAI Compatible"
+5. Server URL: `http://localhost:1234` (default LM Studio port)
+
 ## Dynamic Model Fetching
 
 Stay current with the latest AI models:
@@ -104,12 +111,50 @@ Both OpenAI and Claude support custom model names:
 | 🟠 Orange | Work, business, professional |
 | ⚫ Grey | Utilities, settings, misc |
 
-## Privacy
+## Privacy & Security
 
-- Tab titles and URLs are sent to your chosen AI provider for analysis
+### 🔒 Data Protection
+- **API Key Encryption**: All API keys are encrypted using AES-256-GCM before storage
+- **Device-bound Keys**: Encryption keys are derived from your unique extension instance
+- **Auto-migration**: Existing unencrypted keys are automatically encrypted on update
+
+### 🔓 What Gets Encrypted vs Unencrypted
+
+**Encrypted (Sensitive Data):**
+- `openaiKey` - OpenAI API keys (sk-...)
+- `claudeKey` - Claude API keys (sk-ant-...)
+
+**Unencrypted (Non-sensitive Settings):**
+- `enabled` - Extension on/off toggle
+- `provider` - Selected AI provider ("openai", "claude", "local")
+- `defaultProvider` - Default provider selection  
+- `openaiModel` - Selected OpenAI model name
+- `claudeModel` - Selected Claude model name
+- `localUrl` - Local LLM server URL (http://localhost:11434)
+- `localModel` - Local LLM model name (llama3.2, etc.)
+- `localApiFormat` - API format ("openai" or "ollama")
+
+**Why this split?** API keys are secrets that grant access to paid services and need maximum protection. Settings like model names and toggles aren't sensitive and encrypting everything would hurt performance and cross-device syncing.
+### 🛡️ Data Sanitization
+Before sending tab data to AI providers, sensitive information is automatically removed:
+- Email addresses → `[EMAIL]`
+- Phone numbers → `[PHONE]`
+- Account numbers → `[ACCOUNT]`
+- Credit card numbers → `[CARD]`
+- Social Security Numbers → `[SSN]`
+- IP addresses → `[IP]`
+- Sensitive URL parameters are redacted
+
+### 📡 Network Security
+- All API calls use HTTPS encryption
+- Tab titles and sanitized URLs are sent to your chosen AI provider
 - No data is stored on external servers beyond the AI API calls
-- API keys are stored locally in Chrome's sync storage
 - The extension only processes tabs when enabled
+
+### 💡 Privacy Tips
+- Use **Local LLM** for maximum privacy (no data leaves your machine)
+- Review tab titles before bulk processing sensitive windows
+- API keys are never exposed in the UI after being saved
 
 ## Development
 
@@ -121,8 +166,21 @@ Tabber/
 ├── icons/                  # Extension icons
 ├── popup/                  # Toolbar popup UI
 ├── services/               # AI provider integrations
+│   ├── ai-service.js       # Unified AI interface
+│   ├── openai.js           # OpenAI provider
+│   ├── claude.js           # Claude provider
+│   ├── local-llm.js        # Local LLM provider
+│   ├── sanitizer.js        # Data sanitization
+│   ├── crypto.js           # Encryption service
+│   └── secure-storage.js   # Secure storage wrapper
 └── settings/               # Options page
 ```
+
+### Security Architecture
+The extension uses a modular security architecture:
+- **Sanitizer** - Removes PII before AI processing
+- **CryptoService** - AES-GCM encryption/decryption
+- **SecureStorage** - Transparent encryption layer for Chrome storage
 
 ### Building
 No build process required - load directly as unpacked extension.
@@ -141,17 +199,14 @@ MIT License - see LICENSE file for details
 
 ## Changelog
 
-### v1.1.0 (Latest)
-- 🔄 Dynamic model fetching for OpenAI via API
-- 🆕 Added GPT-5, GPT-5.2, ChatGPT 5.2 support
-- 🆕 Added Claude 4.5 Opus variants
-- 🔧 Custom model input for both providers
-- 🎯 Smart model filtering and sorting
-- 📝 Updated documentation
-
 ### v1.0.0
 - Initial release
 - Support for OpenAI, Claude, and local LLMs
 - Automatic and manual tab grouping
 - Smart color coding
 - Bulk processing of existing tabs
+- 🔐 API key encryption using AES-256-GCM
+- 🛡️ Data sanitization (removes emails, phone numbers, account numbers, etc.)
+- 🏗️ Modular security architecture (crypto, sanitizer, secure-storage services)
+- 📄 Auto-migration of existing unencrypted keys
+- 🔒 Enhanced privacy documentation

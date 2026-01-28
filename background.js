@@ -1,6 +1,7 @@
 // AI Tab Grouper - Background Service Worker
 
 import { AIService } from './services/ai-service.js';
+import { secureStorage } from './services/secure-storage.js';
 
 const aiService = new AIService();
 
@@ -35,7 +36,7 @@ async function processTab(tabId, tab, force = false) {
 
   try {
     // Check if AI is configured
-    const settings = await chrome.storage.sync.get(['provider', 'openaiKey', 'claudeKey', 'localUrl', 'localModel', 'enabled']);
+    const settings = await secureStorage.get(['provider', 'openaiKey', 'claudeKey', 'localUrl', 'localModel', 'enabled']);
     
     if (!settings.enabled && !force) {
       processingTabs.delete(tabId);
@@ -134,10 +135,27 @@ function validateColor(color) {
 // Listen for messages from popup/settings
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'testConnection') {
+    console.log('🔗 Testing AI provider connection...');
     aiService.testConnection()
-      .then(result => sendResponse(result))
-      .catch(error => sendResponse({ success: false, error: error.message }));
+      .then(result => {
+        if (result.success) {
+          console.log('✅ AI connection test successful');
+        } else {
+          console.log('❌ AI connection test failed:', result.error);
+        }
+        sendResponse(result);
+      })
+      .catch(error => {
+        console.log('❌ AI connection test error:', error.message);
+        sendResponse({ success: false, error: error.message });
+      });
     return true; // Keep channel open for async response
+  }
+  
+  if (message.action === 'settingsSaved') {
+    console.log('⚙️ Settings updated - provider:', message.provider || 'none');
+    sendResponse({ success: true });
+    return true;
   }
   
   if (message.action === 'reprocessTab') {
@@ -164,6 +182,26 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === 'getFullStatus') {
+    secureStorage.get(['provider', 'enabled', 'openaiKey', 'claudeKey', 'localUrl', 'localModel'])
+      .then(settings => {
+        sendResponse({
+          enabled: settings.enabled ?? false,
+          provider: settings.provider ?? 'none',
+          isConfigured: isConfigured(settings)
+        });
+      })
+      .catch(error => {
+        sendResponse({
+          enabled: false,
+          provider: 'none',
+          isConfigured: false,
+          error: error.message
+        });
+      });
+    return true;
+  }
+
   if (message.action === 'groupAllTabs') {
     groupAllTabs()
       .then(result => sendResponse(result))
@@ -185,7 +223,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 // Group all open tabs in the current window
 async function groupAllTabs() {
-  const settings = await chrome.storage.sync.get(['provider', 'openaiKey', 'claudeKey', 'localUrl', 'localModel']);
+  const settings = await secureStorage.get(['provider', 'openaiKey', 'claudeKey', 'localUrl', 'localModel']);
   
   if (!isConfigured(settings)) {
     return { success: false, error: 'AI not configured. Open settings first.' };

@@ -3,6 +3,7 @@
 import { OpenAIProvider } from './openai.js';
 import { ClaudeProvider } from './claude.js';
 import { LocalLLMProvider } from './local-llm.js';
+import { sanitizer } from './sanitizer.js';
 
 export class AIService {
   constructor() {
@@ -11,6 +12,9 @@ export class AIService {
       claude: new ClaudeProvider(),
       local: new LocalLLMProvider()
     };
+    
+    // Sanitizer is injected as a dependency
+    this.sanitizer = sanitizer;
   }
 
   // Get the currently configured provider
@@ -26,7 +30,10 @@ export class AIService {
       throw new Error('No AI provider configured');
     }
 
-    const prompt = this.buildPrompt(title, url, existingGroups);
+    // Sanitize tab data before sending to AI
+    const sanitizedData = this.sanitizer.sanitizeTabData(title, url);
+    
+    const prompt = this.buildPrompt(sanitizedData.title, sanitizedData.url, existingGroups);
     const response = await provider.complete(prompt);
     
     return this.parseResponse(response);

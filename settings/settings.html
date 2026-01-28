@@ -58,8 +58,8 @@
             <input type="radio" name="provider" value="claude">
             <div class="provider-card">
               <span class="provider-icon">🎭</span>
-              <span class="provider-name">Claude</span>
-              <span class="provider-desc">Anthropic</span>
+              <span class="provider-name">Anthropic</span>
+              <span class="provider-desc">Claude</span>
             </div>
           </label>
 
@@ -178,6 +178,15 @@
             <option value="ollama">Ollama Native</option>
           </select>
         </div>
+
+        <div class="setup-note">
+          <h3>🛠️ LM Studio Setup</h3>
+          <ol>
+            <li>Start your model server in LM Studio</li>
+            <li>Go to <strong>Server Settings</strong> → <strong>Developer</strong> section</li>
+            <li><strong>Enable CORS</strong> (required for browser extensions)</li>
+          </ol>
+        </div>
       </section>
 
       <!-- Actions -->
@@ -195,6 +204,6 @@
     </footer>
   </div>
 
-  <script src="settings.js"></script>
+  <script type="module" src="settings.js"></script>
 </body>
 </html>

@@ -1,12 +1,14 @@
 // Claude (Anthropic) Provider
 
+import { secureStorage } from './secure-storage.js';
+
 export class ClaudeProvider {
   constructor() {
     this.baseUrl = 'https://api.anthropic.com/v1/messages';
   }
 
   async complete(prompt) {
-    const settings = await chrome.storage.sync.get(['claudeKey', 'claudeModel']);
+    const settings = await secureStorage.get(['claudeKey', 'claudeModel']);
     
     if (!settings.claudeKey) {
       throw new Error('Claude API key not configured');

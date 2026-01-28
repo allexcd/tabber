@@ -1,12 +1,14 @@
 // OpenAI Provider
 
+import { secureStorage } from './secure-storage.js';
+
 export class OpenAIProvider {
   constructor() {
     this.baseUrl = 'https://api.openai.com/v1/chat/completions';
   }
 
   async complete(prompt) {
-    const settings = await chrome.storage.sync.get(['openaiKey', 'openaiModel']);
+    const settings = await secureStorage.get(['openaiKey', 'openaiModel']);
     
     if (!settings.openaiKey) {
       throw new Error('OpenAI API key not configured');

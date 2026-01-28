@@ -7,6 +7,54 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Load current status
 async function loadStatus() {
+  try {
+    // Get status from background service (handles encrypted keys properly)
+    const response = await chrome.runtime.sendMessage({ action: 'getFullStatus' });
+    
+    if (!response) {
+      // Fallback if background service doesn't respond
+      await loadStatusFallback();
+      return;
+    }
+    
+    const indicator = document.getElementById('status-indicator');
+    const statusLabel = document.getElementById('status-label');
+    const providerLabel = document.getElementById('provider-label');
+    const toggleBtn = document.getElementById('toggle-btn');
+    const toggleText = document.getElementById('toggle-text');
+
+    if (!response.isConfigured) {
+      indicator.className = 'status-indicator unconfigured';
+      statusLabel.textContent = 'Not Configured';
+      providerLabel.textContent = 'Open settings to configure';
+      toggleText.textContent = 'Enable';
+      toggleBtn.disabled = true;
+      toggleBtn.style.opacity = '0.5';
+    } else if (response.enabled) {
+      indicator.className = 'status-indicator active';
+      statusLabel.textContent = 'Active';
+      providerLabel.textContent = getProviderName(response.provider);
+      toggleText.textContent = 'Disable';
+      toggleBtn.classList.add('danger');
+      toggleBtn.disabled = false;
+      toggleBtn.style.opacity = '1';
+    } else {
+      indicator.className = 'status-indicator inactive';
+      statusLabel.textContent = 'Disabled';
+      providerLabel.textContent = getProviderName(response.provider);
+      toggleText.textContent = 'Enable';
+      toggleBtn.classList.remove('danger');
+      toggleBtn.disabled = false;
+      toggleBtn.style.opacity = '1';
+    }
+  } catch (error) {
+    console.error('Failed to get status from background:', error);
+    await loadStatusFallback();
+  }
+}
+
+// Fallback status check using direct storage access
+async function loadStatusFallback() {
   const settings = await chrome.storage.sync.get(['enabled', 'provider', 'openaiKey', 'claudeKey', 'localUrl', 'localModel']);
   
   const indicator = document.getElementById('status-indicator');
@@ -30,22 +78,28 @@ async function loadStatus() {
     providerLabel.textContent = getProviderName(settings.provider);
     toggleText.textContent = 'Disable';
     toggleBtn.classList.add('danger');
+    toggleBtn.disabled = false;
+    toggleBtn.style.opacity = '1';
   } else {
     indicator.className = 'status-indicator inactive';
     statusLabel.textContent = 'Disabled';
     providerLabel.textContent = getProviderName(settings.provider);
     toggleText.textContent = 'Enable';
     toggleBtn.classList.remove('danger');
+    toggleBtn.disabled = false;
+    toggleBtn.style.opacity = '1';
   }
 }
 
-// Check if a provider is properly configured
+// Check if a provider is properly configured (fallback method)
 function checkConfiguration(settings) {
   const provider = settings.provider;
   if (!provider) return false;
   
-  if (provider === 'openai' && settings.openaiKey) return true;
-  if (provider === 'claude' && settings.claudeKey) return true;
+  // For encrypted keys, just check if they exist and are non-empty
+  // The actual validation happens in the background service
+  if (provider === 'openai' && settings.openaiKey && settings.openaiKey.trim()) return true;
+  if (provider === 'claude' && settings.claudeKey && settings.claudeKey.trim()) return true;
   if (provider === 'local' && settings.localUrl && settings.localModel) return true;
   
   return false;

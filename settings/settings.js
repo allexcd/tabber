@@ -1,8 +1,13 @@
 // Settings Page Logic
 
+import { secureStorage } from '../services/secure-storage.js';
+
 document.addEventListener('DOMContentLoaded', () => {
-  loadSettings();
-  setupEventListeners();
+  // Migrate any existing unencrypted API keys
+  secureStorage.migrateToEncrypted().then(() => {
+    loadSettings();
+    setupEventListeners();
+  });
 });
 
 // Check if a model value exists in the select options
@@ -22,7 +27,7 @@ function getModelValue(selectId, customInputId) {
 
 // Load saved settings
 async function loadSettings() {
-  const settings = await chrome.storage.sync.get([
+  const settings = await secureStorage.get([
     'enabled',
     'provider',
     'defaultProvider',
@@ -172,8 +177,18 @@ async function saveSettings() {
     }
   }
 
-  await chrome.storage.sync.set(settings);
-  showStatus('Settings saved successfully!', 'success');
+  try {
+    await secureStorage.set(settings);
+    // Notify service worker about settings update
+    chrome.runtime.sendMessage({ 
+      action: 'settingsSaved', 
+      provider: settings.provider 
+    }).catch(() => {}); // Ignore if service worker isn't running
+    showStatus('Settings saved securely!', 'success');
+  } catch (error) {
+    console.error('Settings: Save failed:', error);
+    showStatus(`Save failed: ${error.message}`, 'error');
+  }
 }
 
 // Validate settings for a provider
@@ -210,9 +225,6 @@ async function testConnection() {
     return;
   }
 
-  // Save settings first
-  await saveSettings();
-
   showStatus('Testing connection...', 'info');
 
   try {
@@ -224,6 +236,7 @@ async function testConnection() {
       showStatus(`✗ Connection failed: ${response.error}`, 'error');
     }
   } catch (error) {
+    console.error('Settings: testConnection error:', error);
     showStatus(`✗ Error: ${error.message}`, 'error');
   }
 }
