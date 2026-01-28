@@ -197,16 +197,6 @@ MIT License - see LICENSE file for details
 4. Test thoroughly
 5. Submit a pull request
 
-## Changelog
+## Version History
 
-### v1.0.0
-- Initial release
-- Support for OpenAI, Claude, and local LLMs
-- Automatic and manual tab grouping
-- Smart color coding
-- Bulk processing of existing tabs
-- 🔐 API key encryption using AES-256-GCM
-- 🛡️ Data sanitization (removes emails, phone numbers, account numbers, etc.)
-- 🏗️ Modular security architecture (crypto, sanitizer, secure-storage services)
-- 📄 Auto-migration of existing unencrypted keys
-- 🔒 Enhanced privacy documentation
+See [CHANGELOG.md](CHANGELOG.md) for complete release notes and version history.

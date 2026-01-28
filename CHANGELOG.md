@@ -1,0 +1,60 @@
+# Changelog
+
+All notable changes to the AI Tab Grouper extension will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [1.0.0] - 2025-01-28
+
+### Added
+- Initial release of AI Tab Grouper extension
+- Support for multiple AI providers: OpenAI, Claude/Anthropic, Local LLM
+- Automatic tab grouping based on content analysis
+- Manual tab grouping with "Group All Tabs" functionality
+- Modern AI-powered tab grouping design for extension icons
+- Circular design with browser window and colored tab groups
+- AI neural network symbol with connected nodes
+- Sparkle effects suggesting AI automation
+- Professional appearance suitable for Chrome Web Store
+- Comprehensive security features:
+  - AES-256-GCM encryption for API keys using Web Crypto API
+  - Secure storage service with automatic encryption/decryption
+  - Data sanitization service to remove PII before AI processing
+  - Crypto service with PBKDF2 key derivation (100k iterations)
+  - Migration system for existing unencrypted keys
+- Settings page with:
+  - Provider selection (OpenAI, Claude, Local LLM)
+  - Default provider configuration
+  - Dynamic model fetching for OpenAI
+  - Custom model input support
+  - API key management with secure storage
+  - Connection testing functionality
+- Popup interface with extension status and manual controls
+- Background service worker for automatic tab processing
+- Support for Ollama and LM Studio local LLMs
+- Detailed documentation and setup instructions
+- All icon sizes (16px, 48px, 128px) with professional design
+- Both SVG source files and PNG exports for icons
+
+### Security
+- All API keys stored encrypted at rest
+- User data sanitized before being sent to AI providers
+- Strong key derivation with PBKDF2 (100k iterations)
+- Seamless migration from unencrypted to encrypted storage
+
+### Technical
+- Chrome Extension Manifest V3 compliance
+- Vanilla JavaScript implementation (no build step required)
+- Modular architecture with separate services
+- Clean separation of concerns between providers
+- Service Worker console logging for operations monitoring
+- Error handling and fallback mechanisms throughout
+
+### Documentation
+- Comprehensive README with setup instructions
+- Security documentation explaining encryption approach
+- LM Studio CORS configuration guide
+- MIT License for open-source development
