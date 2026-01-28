@@ -7,6 +7,9 @@
 - **🤖 AI-Powered Grouping**: Uses OpenAI, Claude, or local LLMs to intelligently categorize tabs
 - **🎨 Smart Color Coding**: Semantic colors based on content (blue=dev, green=finance, etc.)
 - **⚡ Real-time Processing**: New tabs are automatically grouped as they load
+- **🔄 Dynamic Model Fetching**: OpenAI models auto-update via API (always current)
+- **🆕 Latest AI Models**: GPT-5, GPT-5.2, ChatGPT 5.2, Claude 4.5 Opus support
+- **🔧 Custom Models**: Enter any model name for bleeding-edge AI access
 - **🔄 Bulk Processing**: Group all existing tabs with one click
 - **⚙️ Multiple AI Providers**: Choose from OpenAI, Claude, or local LLMs (Ollama, LM Studio)
 
@@ -43,13 +46,24 @@ Coming soon...
 ### OpenAI
 ```
 API Key: sk-...
-Models: gpt-4o-mini, gpt-4o, gpt-4-turbo, gpt-3.5-turbo
+Models: Dynamic fetching available + static options:
+  - GPT-4o Mini, GPT-4o
+  - GPT-4.1, GPT-4.1 Mini, GPT-4.1 Nano
+  - GPT-5, GPT-5.2, ChatGPT 5.2
+  - o1, o1 Mini, o1 Pro, o3 Mini
+  - Custom model input for any model
 ```
+
+**Pro Tip**: Enter your API key and click the "🔄 Fetch" button to automatically load all models available to your account, including beta/preview models!
 
 ### Claude (Anthropic)
 ```
 API Key: sk-ant-...
-Models: claude-3-haiku, claude-3.5-sonnet, claude-3-opus
+Models: Manual selection (no API endpoint available):
+  - Claude 3.5 Haiku, Claude 3.5 Sonnet
+  - Claude 3.7 Sonnet, Claude 4 Sonnet
+  - Claude 4 Opus, Claude 4.5 Opus, Claude Opus 4.5
+  - Custom model input for latest releases
 ```
 
 ### Local LLM
@@ -58,6 +72,23 @@ Server URL: http://localhost:11434 (Ollama)
 Model Name: llama3.2, mistral, etc.
 API Format: OpenAI Compatible or Ollama Native
 ```
+
+## Dynamic Model Fetching
+
+Stay current with the latest AI models:
+
+### OpenAI Auto-Update
+1. Enter your OpenAI API key in settings
+2. Click **"🔄 Fetch"** next to the model dropdown
+3. Extension queries OpenAI's API for all available models
+4. Dropdown updates with your account's accessible models
+5. Includes beta/preview models if you have access
+
+### Custom Model Support
+Both OpenAI and Claude support custom model names:
+1. Select **"Custom Model..."** from dropdown
+2. Enter exact model name (e.g., `gpt-6`, `claude-5-opus`)
+3. Use bleeding-edge models as soon as they're released
 
 ## Group Colors
 
@@ -109,6 +140,14 @@ MIT License - see LICENSE file for details
 5. Submit a pull request
 
 ## Changelog
+
+### v1.1.0 (Latest)
+- 🔄 Dynamic model fetching for OpenAI via API
+- 🆕 Added GPT-5, GPT-5.2, ChatGPT 5.2 support
+- 🆕 Added Claude 4.5 Opus variants
+- 🔧 Custom model input for both providers
+- 🎯 Smart model filtering and sorting
+- 📝 Updated documentation
 
 ### v1.0.0
 - Initial release
