@@ -269,6 +269,46 @@ input:checked + .slider:before {
   text-decoration: underline;
 }
 
+/* Custom Model Input */
+.custom-model-group {
+  display: none;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.custom-model-group.active {
+  display: block;
+}
+
+/* Model Select Row */
+.model-select-row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.model-select-row select {
+  flex: 1;
+}
+
+.btn.fetch-btn {
+  padding: 0.75rem 1rem;
+  background: rgba(59, 130, 246, 0.2);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  color: #60a5fa;
+  white-space: nowrap;
+  font-size: 0.8rem;
+}
+
+.btn.fetch-btn:hover {
+  background: rgba(59, 130, 246, 0.3);
+}
+
+.btn.fetch-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* Buttons */
 .actions {
   display: flex;

@@ -5,6 +5,21 @@ document.addEventListener('DOMContentLoaded', () => {
   setupEventListeners();
 });
 
+// Check if a model value exists in the select options
+function isCustomModel(selectElement, modelValue) {
+  const options = Array.from(selectElement.options);
+  return !options.some(opt => opt.value === modelValue && opt.value !== 'custom');
+}
+
+// Get the actual model value (handles custom model input)
+function getModelValue(selectId, customInputId) {
+  const select = document.getElementById(selectId);
+  if (select.value === 'custom') {
+    return document.getElementById(customInputId).value.trim();
+  }
+  return select.value;
+}
+
 // Load saved settings
 async function loadSettings() {
   const settings = await chrome.storage.sync.get([
@@ -37,11 +52,27 @@ async function loadSettings() {
 
   // Set OpenAI settings
   document.getElementById('openai-key').value = settings.openaiKey || '';
-  document.getElementById('openai-model').value = settings.openaiModel || 'gpt-4o-mini';
+  const openaiModel = settings.openaiModel || 'gpt-4o-mini';
+  const openaiSelect = document.getElementById('openai-model');
+  if (isCustomModel(openaiSelect, openaiModel)) {
+    openaiSelect.value = 'custom';
+    document.getElementById('openai-custom-model').value = openaiModel;
+    document.getElementById('openai-custom-group').classList.add('active');
+  } else {
+    openaiSelect.value = openaiModel;
+  }
 
   // Set Claude settings
   document.getElementById('claude-key').value = settings.claudeKey || '';
-  document.getElementById('claude-model').value = settings.claudeModel || 'claude-3-haiku-20240307';
+  const claudeModel = settings.claudeModel || 'claude-3-5-haiku-20241022';
+  const claudeSelect = document.getElementById('claude-model');
+  if (isCustomModel(claudeSelect, claudeModel)) {
+    claudeSelect.value = 'custom';
+    document.getElementById('claude-custom-model').value = claudeModel;
+    document.getElementById('claude-custom-group').classList.add('active');
+  } else {
+    claudeSelect.value = claudeModel;
+  }
 
   // Set Local LLM settings
   document.getElementById('local-url').value = settings.localUrl || '';
@@ -69,6 +100,29 @@ function setupEventListeners() {
       }
     }
   });
+
+  // OpenAI model selection - show/hide custom input
+  document.getElementById('openai-model').addEventListener('change', (e) => {
+    const customGroup = document.getElementById('openai-custom-group');
+    if (e.target.value === 'custom') {
+      customGroup.classList.add('active');
+    } else {
+      customGroup.classList.remove('active');
+    }
+  });
+
+  // Claude model selection - show/hide custom input
+  document.getElementById('claude-model').addEventListener('change', (e) => {
+    const customGroup = document.getElementById('claude-custom-group');
+    if (e.target.value === 'custom') {
+      customGroup.classList.add('active');
+    } else {
+      customGroup.classList.remove('active');
+    }
+  });
+
+  // Fetch OpenAI models button
+  document.getElementById('fetch-openai-models').addEventListener('click', fetchOpenAIModels);
 
   // Save button
   document.getElementById('save-btn').addEventListener('click', saveSettings);
@@ -101,9 +155,9 @@ async function saveSettings() {
     provider: provider || defaultProvider || '',
     defaultProvider: defaultProvider,
     openaiKey: document.getElementById('openai-key').value.trim(),
-    openaiModel: document.getElementById('openai-model').value,
+    openaiModel: getModelValue('openai-model', 'openai-custom-model'),
     claudeKey: document.getElementById('claude-key').value.trim(),
-    claudeModel: document.getElementById('claude-model').value,
+    claudeModel: getModelValue('claude-model', 'claude-custom-model'),
     localUrl: document.getElementById('local-url').value.trim(),
     localModel: document.getElementById('local-model').value.trim(),
     localApiFormat: document.getElementById('local-api-format').value
@@ -185,5 +239,83 @@ function showStatus(message, type) {
     setTimeout(() => {
       status.classList.add('hidden');
     }, 3000);
+  }
+}
+
+// Fetch available models from OpenAI API
+async function fetchOpenAIModels() {
+  const apiKey = document.getElementById('openai-key').value.trim();
+  const btn = document.getElementById('fetch-openai-models');
+  const select = document.getElementById('openai-model');
+  const currentValue = select.value;
+  
+  if (!apiKey) {
+    showStatus('Please enter your OpenAI API key first', 'error');
+    return;
+  }
+  
+  btn.disabled = true;
+  btn.textContent = '⏳ Loading...';
+  
+  try {
+    const response = await fetch('https://api.openai.com/v1/models', {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      }
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    // Filter for chat models (gpt, o1, o3, chatgpt)
+    const chatModels = data.data
+      .filter(m => 
+        m.id.includes('gpt') || 
+        m.id.startsWith('o1') || 
+        m.id.startsWith('o3') ||
+        m.id.includes('chatgpt')
+      )
+      .map(m => m.id)
+      .sort((a, b) => {
+        // Sort: gpt-4 and newer first, then by name
+        const aScore = a.includes('gpt-4') || a.includes('gpt-5') || a.startsWith('o') ? 0 : 1;
+        const bScore = b.includes('gpt-4') || b.includes('gpt-5') || b.startsWith('o') ? 0 : 1;
+        if (aScore !== bScore) return aScore - bScore;
+        return b.localeCompare(a); // Reverse alphabetical (newer versions first)
+      });
+    
+    // Clear and repopulate select
+    select.innerHTML = '';
+    
+    chatModels.forEach(modelId => {
+      const option = document.createElement('option');
+      option.value = modelId;
+      option.textContent = modelId;
+      select.appendChild(option);
+    });
+    
+    // Add custom option at the end
+    const customOption = document.createElement('option');
+    customOption.value = 'custom';
+    customOption.textContent = 'Custom Model...';
+    select.appendChild(customOption);
+    
+    // Restore previous selection if it exists, otherwise select first
+    if (chatModels.includes(currentValue)) {
+      select.value = currentValue;
+    } else if (chatModels.length > 0) {
+      select.value = chatModels[0];
+    }
+    
+    showStatus(`✓ Loaded ${chatModels.length} models from OpenAI`, 'success');
+    
+  } catch (error) {
+    showStatus(`Failed to fetch models: ${error.message}`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '🔄 Fetch';
   }
 }
