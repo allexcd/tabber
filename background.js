@@ -135,18 +135,19 @@ function validateColor(color) {
 // Listen for messages from popup/settings
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'testConnection') {
-    console.log('🔗 Testing AI provider connection...');
+    const providerName = message.config?.provider || 'unknown';
+    console.log(`🔗 Testing ${providerName.toUpperCase()} connection...`);
     testConnectionWithConfig(message.config)
       .then(result => {
         if (result.success) {
-          console.log('✅ AI connection test successful');
+          console.log(`✅ ${providerName.toUpperCase()} connection test successful`);
         } else {
-          console.log('❌ AI connection test failed:', result.error);
+          console.log(`❌ ${providerName.toUpperCase()} connection test failed:`, result.error);
         }
         sendResponse(result);
       })
       .catch(error => {
-        console.log('❌ AI connection test error:', error.message);
+        console.log(`❌ ${providerName.toUpperCase()} connection test error:`, error.message);
         sendResponse({ success: false, error: error.message });
       });
     return true; // Keep channel open for async response
@@ -353,3 +354,4 @@ async function testProviderWithConfig(provider, config) {
     // Restore original storage
     secureStorage.get = originalSecureGet;
   }
+}

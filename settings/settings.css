@@ -247,38 +247,6 @@ input:checked + .slider:before {
   transform: translateX(24px);
 }
 
-/* Default Provider */
-.default-provider {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-  margin-bottom: 1.25rem;
-  padding-bottom: 1.25rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.default-provider label {
-  font-size: 0.9rem;
-  font-weight: 500;
-}
-
-.default-provider select {
-  flex: 1;
-  min-width: 150px;
-  padding: 0.5rem 0.75rem;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
-  color: #f4f4f5;
-  font-size: 0.85rem;
-}
-
-.default-provider .hint {
-  width: 100%;
-  margin-top: 0;
-}
-
 /* Provider Selection */
 .provider-options {
   display: grid;

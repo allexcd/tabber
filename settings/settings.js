@@ -31,7 +31,6 @@ async function loadSettings() {
   const settings = await secureStorage.get([
     'enabled',
     'provider',
-    'defaultProvider',
     'openaiKey',
     'openaiModel',
     'claudeKey',
@@ -43,9 +42,6 @@ async function loadSettings() {
 
   // Set enabled toggle
   document.getElementById('enabled').checked = settings.enabled ?? false;
-
-  // Set default provider
-  document.getElementById('default-provider').value = settings.defaultProvider || '';
 
   // Set provider selection
   if (settings.provider) {
@@ -93,18 +89,6 @@ function setupEventListeners() {
     radio.addEventListener('change', (e) => {
       showProviderSettings(e.target.value);
     });
-  });
-
-  // Default provider selection - auto-select the radio button
-  document.getElementById('default-provider').addEventListener('change', (e) => {
-    const provider = e.target.value;
-    if (provider) {
-      const providerRadio = document.querySelector(`input[name="provider"][value="${provider}"]`);
-      if (providerRadio) {
-        providerRadio.checked = true;
-        showProviderSettings(provider);
-      }
-    }
   });
 
   // OpenAI model selection - show/hide custom input
@@ -231,12 +215,10 @@ function showProviderSettings(provider) {
 // Save settings to Chrome storage
 async function saveSettings() {
   const provider = document.querySelector('input[name="provider"]:checked')?.value;
-  const defaultProvider = document.getElementById('default-provider').value;
   
   const settings = {
     enabled: document.getElementById('enabled').checked,
-    provider: provider || defaultProvider || '',
-    defaultProvider: defaultProvider,
+    provider: provider || '',
     openaiKey: document.getElementById('openai-key').value.trim(),
     openaiModel: getModelValue('openai-model', 'openai-custom-model'),
     claudeKey: document.getElementById('claude-key').value.trim(),
