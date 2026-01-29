@@ -136,7 +136,7 @@ function validateColor(color) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.action === 'testConnection') {
     console.log('🔗 Testing AI provider connection...');
-    aiService.testConnection()
+    testConnectionWithConfig(message.config)
       .then(result => {
         if (result.success) {
           console.log('✅ AI connection test successful');
@@ -264,3 +264,92 @@ async function groupAllTabs() {
 
   return { success: true, count: groupedCount };
 }
+
+// Test connection with provided configuration (used by settings page)
+async function testConnectionWithConfig(config) {
+  if (!config || !config.provider) {
+    return { success: false, error: 'No provider specified' };
+  }
+
+  try {
+    let provider;
+    
+    // Create provider instance based on config
+    switch (config.provider) {
+      case 'openai':
+        if (!config.openaiKey) {
+          return { success: false, error: 'OpenAI API key is required' };
+        }
+        // Temporarily use the provided config for testing
+        provider = aiService.providers.openai;
+        break;
+        
+      case 'claude':
+        if (!config.claudeKey) {
+          return { success: false, error: 'Claude API key is required' };
+        }
+        provider = aiService.providers.claude;
+        break;
+        
+      case 'local':
+        if (!config.localUrl || !config.localModel) {
+          return { success: false, error: 'Local LLM URL and model are required' };
+        }
+        provider = aiService.providers.local;
+        break;
+        
+      default:
+        return { success: false, error: `Unknown provider: ${config.provider}` };
+    }
+
+    // Test the connection using a simple test prompt
+    const response = await testProviderWithConfig(provider, config);
+    return { success: true, response };
+    
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+}
+
+// Test a specific provider with the given configuration
+async function testProviderWithConfig(provider, config) {
+  // Temporarily store current values and use test config
+  const originalStorage = chrome.storage.sync;
+  
+  // Create a mock storage that returns our test config
+  const mockStorage = {
+    get: (keys) => {
+      return new Promise((resolve) => {
+        const result = {};
+        if (keys.includes) {
+          // Array of keys
+          keys.forEach(key => {
+            if (config[key] !== undefined) {
+              result[key] = config[key];
+            }
+          });
+        } else if (typeof keys === 'string') {
+          // Single key
+          if (config[keys] !== undefined) {
+            result[keys] = config[keys];
+          }
+        } else {
+          // All keys
+          Object.assign(result, config);
+        }
+        resolve(result);
+      });
+    }
+  };
+  
+  // Temporarily replace secureStorage's get method to use our config
+  const originalSecureGet = secureStorage.get;
+  secureStorage.get = mockStorage.get;
+  
+  try {
+    const response = await provider.complete('Respond with just the word "OK"');
+    return response;
+  } finally {
+    // Restore original storage
+    secureStorage.get = originalSecureGet;
+  }

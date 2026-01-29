@@ -303,10 +303,32 @@ async function testConnection() {
     return;
   }
 
+  // Get current form values (not saved settings)
+  const testConfig = {
+    provider: provider,
+    openaiKey: document.getElementById('openai-key').value.trim(),
+    openaiModel: getModelValue('openai-model', 'openai-custom-model'),
+    claudeKey: document.getElementById('claude-key').value.trim(), 
+    claudeModel: getModelValue('claude-model', 'claude-custom-model'),
+    localUrl: document.getElementById('local-url').value.trim(),
+    localModel: document.getElementById('local-model').value.trim(),
+    localApiFormat: document.getElementById('local-api-format').value
+  };
+
+  // Validate the current provider has required fields
+  const validation = validateSettings(provider, testConfig);
+  if (!validation.valid) {
+    showStatus(validation.message, 'error');
+    return;
+  }
+
   showStatus('Testing connection...', 'info');
 
   try {
-    const response = await chrome.runtime.sendMessage({ action: 'testConnection' });
+    const response = await chrome.runtime.sendMessage({ 
+      action: 'testConnection',
+      config: testConfig
+    });
     
     if (response.success) {
       showStatus('✓ Connection successful!', 'success');
