@@ -3,13 +3,19 @@
 import { OpenAIProvider } from './openai.js';
 import { ClaudeProvider } from './claude.js';
 import { LocalLLMProvider } from './local-llm.js';
+import { GroqProvider } from './groq.js';
+import { GeminiProvider } from './gemini.js';
 import { sanitizer } from './sanitizer.js';
+import { secureStorage } from './secure-storage.js';
+import { logger } from './logger.js';
 
 export class AIService {
   constructor() {
     this.providers = {
-      openai: new OpenAIProvider(),
       claude: new ClaudeProvider(),
+      gemini: new GeminiProvider(),
+      groq: new GroqProvider(),
+      openai: new OpenAIProvider(),
       local: new LocalLLMProvider()
     };
     
@@ -19,8 +25,8 @@ export class AIService {
 
   // Get the currently configured provider
   async getProvider() {
-    const settings = await chrome.storage.sync.get(['provider']);
-    return this.providers[settings.provider] || null;
+    const settings = await secureStorage.get(['defaultProvider']);
+    return this.providers[settings.defaultProvider] || null;
   }
 
   // Get grouping decision from AI
@@ -89,7 +95,7 @@ Do not include any explanation, just the JSON.`;
         };
       }
     } catch (error) {
-      console.error('AI Tab Grouper: Failed to parse AI response', error);
+      logger.error('Failed to parse AI response', error);
     }
     
     // Default fallback

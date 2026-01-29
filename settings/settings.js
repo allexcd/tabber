@@ -1,55 +1,75 @@
-// Settings Page Logic
+// Settings Page Logic - Main Module
+// Orchestrates settings functionality using specialized modules
 
 import { secureStorage } from '../services/secure-storage.js';
+import { logger } from '../services/logger.js';
+import { 
+  loadCachedModels, 
+  isCustomModel, 
+  getModelValue, 
+  loadCachedModelsForProvider 
+} from './model-cache.js';
+import { 
+  fetchOpenAIModels, 
+  fetchClaudeModels, 
+  fetchGroqModels, 
+  fetchGeminiModels 
+} from './model-fetcher.js';
+import { setupChangelogModal } from './changelog.js';
 
-document.addEventListener('DOMContentLoaded', () => {
-  // Migrate any existing unencrypted API keys
-  secureStorage.migrateToEncrypted().then(() => {
-    loadSettings();
+logger.log('Settings module loaded');
+
+// Initialize on DOM load
+document.addEventListener('DOMContentLoaded', async () => {
+  logger.log('DOMContentLoaded fired');
+  try {
+    // Load cached models first
+    await loadCachedModels();
+    logger.log('Cached models loaded');
+    
+    // Migrate any existing unencrypted API keys
+    await secureStorage.migrateToEncrypted();
+    logger.log('Migration complete');
+    
+    // Load settings and setup
+    await loadSettings();
+    logger.log('Settings loaded');
     setupEventListeners();
+    logger.log('Event listeners setup complete');
     setupChangelogModal();
-  });
-});
-
-// Check if a model value exists in the select options
-function isCustomModel(selectElement, modelValue) {
-  const options = Array.from(selectElement.options);
-  return !options.some(opt => opt.value === modelValue && opt.value !== 'custom');
-}
-
-// Get the actual model value (handles custom model input)
-function getModelValue(selectId, customInputId) {
-  const select = document.getElementById(selectId);
-  if (select.value === 'custom') {
-    return document.getElementById(customInputId).value.trim();
+    logger.log('Initialization complete');
+  } catch (error) {
+    logger.error('Initialization error:', error);
   }
-  return select.value;
-}
+});
 
 // Load saved settings
 async function loadSettings() {
   const settings = await secureStorage.get([
     'enabled',
-    'provider',
+    'defaultProvider',
     'openaiKey',
     'openaiModel',
     'claudeKey',
     'claudeModel',
     'localUrl',
     'localModel',
-    'localApiFormat'
+    'localApiFormat',
+    'groqKey',
+    'groqModel',
+    'geminiKey',
+    'geminiModel'
   ]);
 
   // Set enabled toggle
   document.getElementById('enabled').checked = settings.enabled ?? false;
 
-  // Set provider selection
-  if (settings.provider) {
-    const providerRadio = document.querySelector(`input[name="provider"][value="${settings.provider}"]`);
-    if (providerRadio) {
-      providerRadio.checked = true;
-      showProviderSettings(settings.provider);
-    }
+  // Set provider selection (default to 'claude' for UI display only if none set)
+  const provider = settings.defaultProvider || 'claude';
+  const providerRadio = document.querySelector(`input[name="provider"][value="${provider}"]`);
+  if (providerRadio) {
+    providerRadio.checked = true;
+    showProviderSettings(provider);
   }
 
   // Set OpenAI settings
@@ -80,10 +100,59 @@ async function loadSettings() {
   document.getElementById('local-url').value = settings.localUrl || '';
   document.getElementById('local-model').value = settings.localModel || '';
   document.getElementById('local-api-format').value = settings.localApiFormat || 'openai';
+
+  // Set Groq settings
+  document.getElementById('groq-key').value = settings.groqKey || '';
+  const groqModel = settings.groqModel || 'llama-3.1-70b-versatile';
+  const groqSelect = document.getElementById('groq-model');
+  if (isCustomModel(groqSelect, groqModel)) {
+    groqSelect.value = 'custom';
+    document.getElementById('groq-custom-model').value = groqModel;
+    document.getElementById('groq-custom-group').classList.add('active');
+  } else {
+    groqSelect.value = groqModel;
+  }
+
+  // Set Gemini settings
+  document.getElementById('gemini-key').value = settings.geminiKey || '';
+  const geminiModel = settings.geminiModel || 'gemini-1.5-flash';
+  const geminiSelect = document.getElementById('gemini-model');
+  if (isCustomModel(geminiSelect, geminiModel)) {
+    geminiSelect.value = 'custom';
+    document.getElementById('gemini-custom-model').value = geminiModel;
+    document.getElementById('gemini-custom-group').classList.add('active');
+  } else {
+    geminiSelect.value = geminiModel;
+  }
+
+  // Update default provider UI - pass actual saved default, not the fallback
+  updateDefaultProviderUI(settings.defaultProvider);
+  
+  logger.log('loadSettings - defaultProvider:', settings.defaultProvider);
+  
+  // Update enabled toggle state based on default provider
+  updateEnabledToggleState(settings.defaultProvider);
 }
 
 // Setup event listeners
 function setupEventListeners() {
+  // Enable/Disable extension toggle
+  document.getElementById('enabled').addEventListener('change', async (e) => {
+    try {
+      await secureStorage.set({ enabled: e.target.checked });
+      logger.log('Extension enabled state saved:', e.target.checked);
+      
+      // Notify service worker about extension state change
+      chrome.runtime.sendMessage({ 
+        action: 'settingsSaved', 
+        enabled: e.target.checked 
+      }).catch(() => {}); // Ignore if service worker isn't running
+      
+    } catch (error) {
+      logger.error('Failed to save enabled state:', error);
+    }
+  });
+
   // Provider selection
   document.querySelectorAll('input[name="provider"]').forEach(radio => {
     radio.addEventListener('change', (e) => {
@@ -111,95 +180,58 @@ function setupEventListeners() {
     }
   });
 
-  // Fetch OpenAI models button
-  document.getElementById('fetch-openai-models').addEventListener('click', fetchOpenAIModels);
+  // Fetch models buttons - pass showStatus as callback
+  document.getElementById('fetch-openai-models').addEventListener('click', () => fetchOpenAIModels(showStatus));
+  document.getElementById('fetch-claude-models').addEventListener('click', () => fetchClaudeModels(showStatus));
+  document.getElementById('fetch-groq-models').addEventListener('click', () => fetchGroqModels(showStatus));
+  document.getElementById('fetch-gemini-models').addEventListener('click', () => fetchGeminiModels(showStatus));
 
-  // Save button
-  document.getElementById('save-btn').addEventListener('click', saveSettings);
+  // Save buttons (one in each provider form + legacy ID)
+  document.querySelectorAll('.save-btn, #save-btn').forEach(btn => {
+    btn.addEventListener('click', saveSettings);
+  });
 
-  // Test button
-  document.getElementById('test-btn').addEventListener('click', testConnection);
-}
+  // Test buttons (one in each provider form + legacy ID)
+  document.querySelectorAll('.test-btn, #test-btn').forEach(btn => {
+    btn.addEventListener('click', testConnection);
+  });
 
-function setupChangelogModal() {
-  const infoButton = document.getElementById('changelog-info');
-  const modal = document.getElementById('changelog-modal');
-  const closeButton = document.getElementById('changelog-close');
-  const content = document.getElementById('changelog-content');
+  // Make Default buttons
+  document.querySelectorAll('.default-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const provider = e.target.dataset.provider;
+      makeProviderDefault(provider);
+    });
+  });
 
-  if (!infoButton || !modal || !closeButton || !content) {
-    return;
-  }
+  // API key field listeners - update default button state when keys change
+  document.getElementById('openai-key').addEventListener('input', () => updateDefaultButtonState('openai'));
+  document.getElementById('claude-key').addEventListener('input', () => updateDefaultButtonState('claude'));
+  document.getElementById('groq-key').addEventListener('input', () => updateDefaultButtonState('groq'));
+  document.getElementById('gemini-key').addEventListener('input', () => updateDefaultButtonState('gemini'));
+  document.getElementById('local-url').addEventListener('input', () => updateDefaultButtonState('local'));
+  document.getElementById('local-model').addEventListener('input', () => updateDefaultButtonState('local'));
 
-  const closeModal = () => {
-    modal.classList.add('hidden');
-  };
-
-  const openModal = async () => {
-    modal.classList.remove('hidden');
-    content.innerHTML = '<p class="loading">Loading changelog...</p>';
-    try {
-      const response = await fetch(chrome.runtime.getURL('CHANGELOG.json'));
-      if (!response.ok) {
-        throw new Error('Failed to load changelog');
+  // Listen for storage changes to sync with popup
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    if (areaName === 'sync' && changes.tabber && changes.tabber.newValue) {
+      const newSettings = changes.tabber.newValue;
+      if ('enabled' in newSettings) {
+        // Update toggle without triggering save
+        const enabledToggle = document.getElementById('enabled');
+        if (enabledToggle.checked !== newSettings.enabled) {
+          enabledToggle.checked = newSettings.enabled;
+          logger.log('Synced enabled state from storage:', newSettings.enabled);
+        }
       }
-      const data = await response.json();
-      renderChangelog(data, content);
-    } catch (error) {
-      content.innerHTML = '<p class="loading">Unable to load changelog.</p>';
-    }
-  };
-
-  infoButton.addEventListener('click', openModal);
-  closeButton.addEventListener('click', closeModal);
-  modal.addEventListener('click', (event) => {
-    if (event.target?.dataset?.close === 'true') {
-      closeModal();
     }
   });
-  document.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
-      closeModal();
-    }
-  });
-}
-
-function renderChangelog(data, container) {
-  if (!data || !Array.isArray(data.versions) || data.versions.length === 0) {
-    container.innerHTML = '<p class="loading">No changelog data available.</p>';
-    return;
-  }
-
-  const html = data.versions.map((version) => {
-    const sections = version.sections || {};
-    const sectionHtml = Object.keys(sections).map((sectionTitle) => {
-      const items = sections[sectionTitle] || [];
-      if (!items.length) {
-        return '';
-      }
-      const listItems = items.map(item => `<li>${item}</li>`).join('');
-      return `
-        <div class="changelog-section">
-          <h4>${sectionTitle}</h4>
-          <ul>${listItems}</ul>
-        </div>
-      `;
-    }).join('');
-
-    return `
-      <div class="changelog-version">
-        <h3>${version.version}</h3>
-        ${version.date ? `<div class="changelog-date">${version.date}</div>` : ''}
-        ${sectionHtml}
-      </div>
-    `;
-  }).join('');
-
-  container.innerHTML = html || '<p class="loading">No changelog data available.</p>';
 }
 
 // Show the settings section for the selected provider
 function showProviderSettings(provider) {
+  logger.log('Switching to provider:', provider);
+  
   // Hide all provider settings
   document.querySelectorAll('.provider-settings').forEach(section => {
     section.classList.remove('active');
@@ -209,6 +241,10 @@ function showProviderSettings(provider) {
   const settingsSection = document.getElementById(`${provider}-settings`);
   if (settingsSection) {
     settingsSection.classList.add('active');
+    
+    // Load cached models if available
+    logger.log('Loading cached models for:', provider);
+    loadCachedModelsForProvider(provider);
   }
 }
 
@@ -216,37 +252,64 @@ function showProviderSettings(provider) {
 async function saveSettings() {
   const provider = document.querySelector('input[name="provider"]:checked')?.value;
   
+  if (!provider) {
+    showStatus('Please select a provider first', 'error');
+    return;
+  }
+  
+  // Build settings object with only the selected provider's settings
   const settings = {
-    enabled: document.getElementById('enabled').checked,
-    provider: provider || '',
-    openaiKey: document.getElementById('openai-key').value.trim(),
-    openaiModel: getModelValue('openai-model', 'openai-custom-model'),
-    claudeKey: document.getElementById('claude-key').value.trim(),
-    claudeModel: getModelValue('claude-model', 'claude-custom-model'),
-    localUrl: document.getElementById('local-url').value.trim(),
-    localModel: document.getElementById('local-model').value.trim(),
-    localApiFormat: document.getElementById('local-api-format').value
+    enabled: document.getElementById('enabled').checked
   };
+  
+  // Only save settings for the selected provider
+  switch (provider) {
+    case 'openai':
+      settings.openaiKey = document.getElementById('openai-key').value.trim();
+      settings.openaiModel = getModelValue('openai-model', 'openai-custom-model');
+      break;
+    case 'claude':
+      settings.claudeKey = document.getElementById('claude-key').value.trim();
+      settings.claudeModel = getModelValue('claude-model', 'claude-custom-model');
+      break;
+    case 'local':
+      settings.localUrl = document.getElementById('local-url').value.trim();
+      settings.localModel = document.getElementById('local-model').value.trim();
+      settings.localApiFormat = document.getElementById('local-api-format').value;
+      break;
+    case 'groq':
+      settings.groqKey = document.getElementById('groq-key').value.trim();
+      settings.groqModel = getModelValue('groq-model', 'groq-custom-model');
+      break;
+    case 'gemini':
+      settings.geminiKey = document.getElementById('gemini-key').value.trim();
+      settings.geminiModel = getModelValue('gemini-model', 'gemini-custom-model');
+      break;
+  }
 
   // Validate required fields for the selected provider
-  if (settings.enabled && provider) {
-    const validation = validateSettings(provider, settings);
-    if (!validation.valid) {
-      showStatus(validation.message, 'error');
-      return;
-    }
+  const validation = validateSettings(provider, settings);
+  if (!validation.valid) {
+    showStatus(validation.message, 'error');
+    return;
   }
 
   try {
     await secureStorage.set(settings);
+    
+    logger.log(`Saved settings for ${provider.toUpperCase()}`);
+    
+    // Update the default button state for this provider (in case credentials were added)
+    updateDefaultButtonState(provider);
+    
     // Notify service worker about settings update
     chrome.runtime.sendMessage({ 
       action: 'settingsSaved', 
-      provider: settings.provider 
+      provider: provider 
     }).catch(() => {}); // Ignore if service worker isn't running
-    showStatus('Settings saved securely!', 'success');
+    showStatus(`${provider.charAt(0).toUpperCase() + provider.slice(1)} settings saved!`, 'success');
   } catch (error) {
-    console.error('Settings: Save failed:', error);
+    logger.error('Save failed:', error);
     showStatus(`Save failed: ${error.message}`, 'error');
   }
 }
@@ -272,6 +335,16 @@ function validateSettings(provider, settings) {
         return { valid: false, message: 'Please enter your local LLM model name' };
       }
       break;
+    case 'groq':
+      if (!settings.groqKey) {
+        return { valid: false, message: 'Please enter your Groq API key' };
+      }
+      break;
+    case 'gemini':
+      if (!settings.geminiKey) {
+        return { valid: false, message: 'Please enter your Google Gemini API key' };
+      }
+      break;
   }
   return { valid: true };
 }
@@ -294,7 +367,11 @@ async function testConnection() {
     claudeModel: getModelValue('claude-model', 'claude-custom-model'),
     localUrl: document.getElementById('local-url').value.trim(),
     localModel: document.getElementById('local-model').value.trim(),
-    localApiFormat: document.getElementById('local-api-format').value
+    localApiFormat: document.getElementById('local-api-format').value,
+    groqKey: document.getElementById('groq-key').value.trim(),
+    groqModel: getModelValue('groq-model', 'groq-custom-model'),
+    geminiKey: document.getElementById('gemini-key').value.trim(),
+    geminiModel: getModelValue('gemini-model', 'gemini-custom-model')
   };
 
   // Validate the current provider has required fields
@@ -305,6 +382,8 @@ async function testConnection() {
   }
 
   showStatus('Testing connection...', 'info');
+  
+  logger.log(`Testing connection for ${provider.toUpperCase()} provider`);
 
   try {
     const response = await chrome.runtime.sendMessage({ 
@@ -318,99 +397,172 @@ async function testConnection() {
       showStatus(`✗ Connection failed: ${response.error}`, 'error');
     }
   } catch (error) {
-    console.error('Settings: testConnection error:', error);
+    logger.error('testConnection error:', error);
     showStatus(`✗ Error: ${error.message}`, 'error');
   }
 }
 
-// Show status message
+// Show status message (updates all status elements)
 function showStatus(message, type) {
-  const status = document.getElementById('status');
-  status.textContent = message;
-  status.className = `status ${type}`;
+  // Update the active provider's status element
+  const activeSettings = document.querySelector('.provider-settings.active');
+  const statusElements = activeSettings 
+    ? activeSettings.querySelectorAll('.status')
+    : document.querySelectorAll('#status, .status');
+  
+  statusElements.forEach(status => {
+    status.textContent = message;
+    status.className = `status ${type}`;
+  });
   
   // Auto-hide success messages
   if (type === 'success') {
     setTimeout(() => {
-      status.classList.add('hidden');
+      statusElements.forEach(status => {
+        status.classList.add('hidden');
+      });
     }, 3000);
   }
 }
 
-// Fetch available models from OpenAI API
-async function fetchOpenAIModels() {
-  const apiKey = document.getElementById('openai-key').value.trim();
-  const btn = document.getElementById('fetch-openai-models');
-  const select = document.getElementById('openai-model');
-  const currentValue = select.value;
-  
-  if (!apiKey) {
-    showStatus('Please enter your OpenAI API key first', 'error');
-    return;
-  }
-  
-  btn.disabled = true;
-  btn.textContent = '⏳ Loading...';
-  
+// Make a provider the default
+async function makeProviderDefault(provider) {
   try {
-    const response = await fetch('https://api.openai.com/v1/models', {
-      headers: {
-        'Authorization': `Bearer ${apiKey}`
-      }
-    });
+    // Build settings object with only the default provider and its specific settings
+    const settings = { defaultProvider: provider };
     
-    if (!response.ok) {
-      throw new Error(`API error: ${response.status}`);
+    // Only save settings for the selected provider
+    switch (provider) {
+      case 'openai':
+        settings.openaiKey = document.getElementById('openai-key').value.trim();
+        settings.openaiModel = getModelValue('openai-model', 'openai-custom-model');
+        break;
+      case 'claude':
+        settings.claudeKey = document.getElementById('claude-key').value.trim();
+        settings.claudeModel = getModelValue('claude-model', 'claude-custom-model');
+        break;
+      case 'local':
+        settings.localUrl = document.getElementById('local-url').value.trim();
+        settings.localModel = document.getElementById('local-model').value.trim();
+        settings.localApiFormat = document.getElementById('local-api-format').value;
+        break;
+      case 'groq':
+        settings.groqKey = document.getElementById('groq-key').value.trim();
+        settings.groqModel = getModelValue('groq-model', 'groq-custom-model');
+        break;
+      case 'gemini':
+        settings.geminiKey = document.getElementById('gemini-key').value.trim();
+        settings.geminiModel = getModelValue('gemini-model', 'gemini-custom-model');
+        break;
     }
     
-    const data = await response.json();
-    
-    // Filter for chat models (gpt, o1, o3, chatgpt)
-    const chatModels = data.data
-      .filter(m => 
-        m.id.includes('gpt') || 
-        m.id.startsWith('o1') || 
-        m.id.startsWith('o3') ||
-        m.id.includes('chatgpt')
-      )
-      .map(m => m.id)
-      .sort((a, b) => {
-        // Sort: gpt-4 and newer first, then by name
-        const aScore = a.includes('gpt-4') || a.includes('gpt-5') || a.startsWith('o') ? 0 : 1;
-        const bScore = b.includes('gpt-4') || b.includes('gpt-5') || b.startsWith('o') ? 0 : 1;
-        if (aScore !== bScore) return aScore - bScore;
-        return b.localeCompare(a); // Reverse alphabetical (newer versions first)
-      });
-    
-    // Clear and repopulate select
-    select.innerHTML = '';
-    
-    chatModels.forEach(modelId => {
-      const option = document.createElement('option');
-      option.value = modelId;
-      option.textContent = modelId;
-      select.appendChild(option);
-    });
-    
-    // Add custom option at the end
-    const customOption = document.createElement('option');
-    customOption.value = 'custom';
-    customOption.textContent = 'Custom Model...';
-    select.appendChild(customOption);
-    
-    // Restore previous selection if it exists, otherwise select first
-    if (chatModels.includes(currentValue)) {
-      select.value = currentValue;
-    } else if (chatModels.length > 0) {
-      select.value = chatModels[0];
+    // Validate the provider has required fields
+    const validation = validateSettings(provider, settings);
+    if (!validation.valid) {
+      showStatus(validation.message, 'error');
+      return;
     }
     
-    showStatus(`✓ Loaded ${chatModels.length} models from OpenAI`, 'success');
+    // Save only the default provider and its settings
+    await secureStorage.set(settings);
     
+    logger.log(`Set ${provider.toUpperCase()} as default provider (with settings saved)`);
+    
+    // Update UI to show which is default
+    updateDefaultProviderUI(provider);
+    
+    // Update enabled toggle state
+    updateEnabledToggleState(provider);
+    
+    // Notify service worker about default provider change
+    chrome.runtime.sendMessage({ 
+      action: 'settingsSaved', 
+      provider: provider 
+    }).catch(() => {}); // Ignore if service worker isn't running
+    
+    showStatus(`✓ ${provider.charAt(0).toUpperCase() + provider.slice(1)} set as default provider!`, 'success');
   } catch (error) {
-    showStatus(`Failed to fetch models: ${error.message}`, 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '🔄 Fetch';
+    logger.error('Make default failed:', error);
+    showStatus(`Failed to set default: ${error.message}`, 'error');
+  }
+}
+
+// Update UI to show which provider is default
+function updateDefaultProviderUI(currentDefault) {
+  document.querySelectorAll('.default-btn').forEach(btn => {
+    const provider = btn.dataset.provider;
+    const hasCredentials = providerHasCredentials(provider);
+    
+    if (currentDefault && provider === currentDefault) {
+      // Replace button with green label for current default
+      btn.textContent = '⭐ Default Provider';
+      btn.disabled = false;
+      btn.classList.add('active');
+      btn.style.pointerEvents = 'none'; // Prevent clicking
+    } else {
+      // Show as regular button
+      btn.textContent = '⭐ Make Default';
+      btn.disabled = !hasCredentials;
+      btn.classList.remove('active');
+      btn.style.pointerEvents = 'auto'; // Allow clicking
+    }
+  });
+}
+
+// Check if a provider has the required credentials
+function providerHasCredentials(provider) {
+  switch (provider) {
+    case 'openai':
+      return document.getElementById('openai-key').value.trim() !== '';
+    case 'claude':
+      return document.getElementById('claude-key').value.trim() !== '';
+    case 'groq':
+      return document.getElementById('groq-key').value.trim() !== '';
+    case 'gemini':
+      return document.getElementById('gemini-key').value.trim() !== '';
+    case 'local':
+      return document.getElementById('local-url').value.trim() !== '' && 
+             document.getElementById('local-model').value.trim() !== '';
+    default:
+      return false;
+  }
+}
+
+// Update default button state for a specific provider
+function updateDefaultButtonState(provider) {
+  const btn = document.querySelector(`.default-btn[data-provider="${provider}"]`);
+  if (!btn) return;
+  
+  const hasCredentials = providerHasCredentials(provider);
+  const isCurrentDefault = btn.classList.contains('active');
+  
+  if (!isCurrentDefault) {
+    btn.disabled = !hasCredentials;
+  }
+}
+
+// Update enabled toggle state based on default provider
+function updateEnabledToggleState(defaultProvider) {
+  const enabledToggle = document.getElementById('enabled');
+  const warningMessage = document.getElementById('no-provider-warning');
+  const switchElement = enabledToggle.parentElement; // The switch label
+  
+  logger.log('updateEnabledToggleState - defaultProvider:', defaultProvider, 'type:', typeof defaultProvider);
+  
+  if (!defaultProvider) {
+    // No default provider - disable toggle and show warning
+    logger.log('No default provider - disabling toggle');
+    enabledToggle.disabled = true;
+    enabledToggle.checked = false;
+    switchElement.style.opacity = '0.5';
+    switchElement.style.cursor = 'not-allowed';
+    warningMessage.classList.remove('hidden');
+  } else {
+    // Default provider exists - enable toggle
+    logger.log('Default provider exists - enabling toggle');
+    enabledToggle.disabled = false;
+    switchElement.style.opacity = '1';
+    switchElement.style.cursor = 'pointer';
+    warningMessage.classList.add('hidden');
   }
 }

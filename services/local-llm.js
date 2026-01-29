@@ -1,8 +1,10 @@
 // Local LLM Provider (Ollama, LM Studio, etc.)
 
+import { secureStorage } from './secure-storage.js';
+
 export class LocalLLMProvider {
   async complete(prompt) {
-    const settings = await chrome.storage.sync.get(['localUrl', 'localModel', 'localApiFormat']);
+    const settings = await secureStorage.get(['localUrl', 'localModel', 'localApiFormat']);
     
     if (!settings.localUrl) {
       throw new Error('Local LLM server URL not configured');

@@ -2,6 +2,8 @@
 // Provides encryption/decryption for sensitive data like API keys
 // Uses Web Crypto API for secure operations
 
+import { logger } from './logger.js';
+
 export class CryptoService {
   constructor() {
     this.algorithm = 'AES-GCM';
@@ -85,7 +87,7 @@ export class CryptoService {
       // Return as base64 string
       return this.arrayBufferToBase64(combined.buffer);
     } catch (error) {
-      console.error('CryptoService: Encryption failed', error);
+      logger.error('CryptoService: Encryption failed', error);
       throw new Error('Encryption failed');
     }
   }
@@ -116,7 +118,7 @@ export class CryptoService {
       const decoder = new TextDecoder();
       return decoder.decode(decryptedData);
     } catch (error) {
-      console.error('CryptoService: Decryption failed', error);
+      logger.error('CryptoService: Decryption failed', error);
       throw new Error('Decryption failed - invalid data or password');
     }
   }

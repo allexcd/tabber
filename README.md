@@ -4,14 +4,16 @@
 
 ## Features
 
-- **🤖 AI-Powered Grouping**: Uses OpenAI, Claude, or local LLMs to intelligently categorize tabs
+- **🤖 AI-Powered Grouping**: Uses OpenAI, Claude, Groq, Gemini, or local LLMs to intelligently categorize tabs
+- **🆓 Free AI Options**: Groq and Google Gemini offer generous free tiers
 - **🎨 Smart Color Coding**: Semantic colors based on content (blue=dev, green=finance, etc.)
 - **⚡ Real-time Processing**: New tabs are automatically grouped as they load
-- **🔄 Dynamic Model Fetching**: OpenAI models auto-update via API (always current)
-- **🆕 Latest AI Models**: GPT-5, GPT-5.2, ChatGPT 5.2, Claude 4.5 Opus support
+- **🔄 Dynamic Model Fetching**: Models auto-update via API for all providers
+- **🆕 Latest AI Models**: GPT-5, Claude 4.5 Opus, Llama 3.2, Gemini 2.0 support
 - **🔧 Custom Models**: Enter any model name for bleeding-edge AI access
 - **🔄 Bulk Processing**: Group all existing tabs with one click
-- **⚙️ Multiple AI Providers**: Choose from OpenAI, Claude, or local LLMs (Ollama, LM Studio)
+- **⚙️ 5 AI Providers**: OpenAI, Claude, Groq, Google Gemini, Local LLMs
+- **💾 Persistent Model Cache**: Fetched models are saved across browser sessions
 
 ## Installation
 
@@ -38,7 +40,7 @@ Coming soon...
 ## Usage
 
 - **Automatic**: New tabs are grouped automatically when enabled
-- **Manual**: Click "Regroup Tab" to reprocess the current tab
+- **Manual**: Click "Regroup Tabs" to reprocess the current tab
 - **Bulk**: Click "Group All Open Tabs" to organize all existing tabs
 
 ## AI Provider Setup
@@ -117,22 +119,23 @@ Both OpenAI and Claude support custom model names:
 - **API Key Encryption**: All API keys are encrypted using AES-256-GCM before storage
 - **Device-bound Keys**: Encryption keys are derived from your unique extension instance
 - **Auto-migration**: Existing unencrypted keys are automatically encrypted on update
+- **Unified Storage**: All data organized under single `tabber` key for security auditing
 
 ### 🔓 What Gets Encrypted vs Unencrypted
 
 **Encrypted (Sensitive Data):**
 - `openaiKey` - OpenAI API keys (sk-...)
 - `claudeKey` - Claude API keys (sk-ant-...)
+- `groqKey` - Groq API keys (gsk_...)
+- `geminiKey` - Google Gemini API keys
 
 **Unencrypted (Non-sensitive Settings):**
 - `enabled` - Extension on/off toggle
-- `provider` - Selected AI provider ("openai", "claude", "local")
-- `defaultProvider` - Default provider selection  
-- `openaiModel` - Selected OpenAI model name
-- `claudeModel` - Selected Claude model name
+- `defaultProvider` - Selected AI provider ("claude", "gemini", "groq", "openai", "local")
+- `*Model` - Selected model names for each provider
 - `localUrl` - Local LLM server URL (http://localhost:11434)
-- `localModel` - Local LLM model name (llama3.2, etc.)
 - `localApiFormat` - API format ("openai" or "ollama")
+- `fetchedModels` - Cached model lists from API fetches
 
 **Why this split?** API keys are secrets that grant access to paid services and need maximum protection. Settings like model names and toggles aren't sensitive and encrypting everything would hurt performance and cross-device syncing.
 ### 🛡️ Data Sanitization
@@ -161,26 +164,125 @@ Before sending tab data to AI providers, sensitive information is automatically 
 ### Project Structure
 ```
 Tabber/
-├── manifest.json           # Extension manifest
+├── manifest.json           # Extension manifest (MV3)
 ├── background.js           # Service worker (main logic)
-├── icons/                  # Extension icons
+├── icons/                  # Extension icons (16, 48, 128px)
 ├── popup/                  # Toolbar popup UI
-├── services/               # AI provider integrations
+│   ├── popup.html          # Popup markup
+│   ├── popup.css           # Popup styles
+│   └── popup.js            # Popup logic & status display
+├── services/               # Core services & AI providers
 │   ├── ai-service.js       # Unified AI interface
 │   ├── openai.js           # OpenAI provider
 │   ├── claude.js           # Claude provider
+│   ├── groq.js             # Groq provider (free tier)
+│   ├── gemini.js           # Google Gemini provider (free tier)
 │   ├── local-llm.js        # Local LLM provider
-│   ├── sanitizer.js        # Data sanitization
-│   ├── crypto.js           # Encryption service
-│   └── secure-storage.js   # Secure storage wrapper
+│   ├── sanitizer.js        # Data sanitization (PII removal)
+│   ├── crypto.js           # AES-256-GCM encryption
+│   ├── secure-storage.js   # Encrypted sync storage wrapper
+│   ├── local-storage.js    # Local storage wrapper
+│   └── logger.js           # Centralized debug logging
 └── settings/               # Options page
+    ├── settings.html       # Settings markup
+    ├── settings.css        # Settings styles
+    ├── settings.js         # Main settings orchestration
+    ├── model-cache.js      # Model caching logic
+    ├── model-fetcher.js    # Dynamic model fetching
+    ├── changelog.js        # Changelog modal display
+    └── settings-fallback.js # CSP-compliant fallback script
 ```
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed diagrams and module relationships.
+
+### Persistence Architecture
+
+The extension uses Chrome's storage APIs with a unified key structure for organized data management.
+
+#### Storage Services
+
+| Service | Storage Type | Purpose |
+|---------|-------------|---------|
+| `secureStorage` | `chrome.storage.sync` | Encrypted API keys & settings (synced across devices) |
+| `localStorage` | `chrome.storage.local` | Cached data & preferences (device-specific) |
+
+#### Data Structure
+
+All extension data is stored under a single `tabber` key in each storage type:
+
+**Sync Storage** (`chrome.storage.sync.tabber`):
+```javascript
+{
+  tabber: {
+    // Extension state
+    enabled: boolean,
+    defaultProvider: "claude" | "gemini" | "groq" | "openai" | "local",
+    
+    // API Keys (AES-256-GCM encrypted)
+    openaiKey: "encrypted:v1:...",
+    claudeKey: "encrypted:v1:...",
+    groqKey: "encrypted:v1:...",
+    geminiKey: "encrypted:v1:...",
+    
+    // Model selections
+    openaiModel: "gpt-4o-mini",
+    claudeModel: "claude-3-5-haiku-20241022",
+    groqModel: "llama-3.1-70b-versatile",
+    geminiModel: "gemini-1.5-flash",
+    
+    // Local LLM settings
+    localUrl: "http://localhost:11434",
+    localModel: "llama3.2",
+    localApiFormat: "openai" | "ollama"
+  }
+}
+```
+
+**Local Storage** (`chrome.storage.local.tabber`):
+```javascript
+{
+  tabber: {
+    // Cached models from API fetches (persisted across sessions)
+    fetchedModels: {
+      openai: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", ...],
+      claude: ["claude-3-5-sonnet-20241022", ...],
+      groq: ["llama-3.1-70b-versatile", ...],
+      gemini: ["gemini-1.5-flash", "gemini-1.5-pro", ...]
+    }
+  }
+}
+```
+
+#### Why This Structure?
+
+1. **Organization**: Single `tabber` key prevents namespace collisions with other extensions
+2. **Debugging**: Easy to inspect all extension data in DevTools → Application → Extension Storage
+3. **Migration**: Simplifies data migration between versions
+4. **Sync Efficiency**: Chrome sync storage has quota limits; nested structure is more efficient
+
+#### Automatic Migration
+
+Both storage services include automatic migration from legacy flat-key formats:
+
+```javascript
+// Old format (migrated automatically)
+{ openaiKey: "sk-...", enabled: true, ... }
+
+// New format
+{ tabber: { openaiKey: "encrypted:v1:...", enabled: true, ... } }
+```
+
+Migration runs on:
+- Extension installation
+- First settings page load
+- First popup interaction
 
 ### Security Architecture
 The extension uses a modular security architecture:
 - **Sanitizer** - Removes PII before AI processing
-- **CryptoService** - AES-GCM encryption/decryption
-- **SecureStorage** - Transparent encryption layer for Chrome storage
+- **CryptoService** - AES-GCM encryption/decryption with device-bound keys
+- **SecureStorage** - Transparent encryption layer for Chrome sync storage
+- **LocalStorage** - Non-sensitive cached data management
 
 ### Building
 No build process required - load directly as unpacked extension.

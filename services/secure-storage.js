@@ -1,14 +1,18 @@
 // Secure Storage Service
 // Wraps Chrome storage with automatic encryption for sensitive keys
 // Provides a clean interface for storing/retrieving encrypted data
+// All data is stored under a single 'tabber' key for organization
 
 import { cryptoService } from './crypto.js';
+import { logger } from './logger.js';
+
+const STORAGE_KEY = 'tabber';
 
 export class SecureStorage {
   constructor(options = {}) {
     this.options = {
       // Keys that should be encrypted when stored
-      sensitiveKeys: ['openaiKey', 'claudeKey'],
+      sensitiveKeys: ['openaiKey', 'claudeKey', 'groqKey', 'geminiKey'],
       // Storage type: 'sync' or 'local'
       storageType: 'sync',
       ...options
@@ -22,75 +26,23 @@ export class SecureStorage {
     return this.options.sensitiveKeys.includes(key);
   }
 
-  // Get values from storage, auto-decrypting sensitive keys
-  async get(keys) {
+  // Get the entire tabber storage object
+  async getTabberData() {
     return new Promise((resolve, reject) => {
-      this.storage.get(keys, async (result) => {
+      this.storage.get([STORAGE_KEY], (result) => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
           return;
         }
-
-        try {
-          const decrypted = { ...result };
-
-          // Decrypt sensitive keys
-          for (const key of Object.keys(decrypted)) {
-            if (this.isSensitiveKey(key) && decrypted[key]) {
-              try {
-                // Check if value is encrypted
-                if (cryptoService.isEncrypted(decrypted[key])) {
-                  decrypted[key] = await cryptoService.decrypt(decrypted[key]);
-                }
-              } catch (error) {
-                console.warn(`SecureStorage: Failed to decrypt ${key}, using raw value`, error);
-                // Keep raw value if decryption fails (might be old unencrypted data)
-              }
-            }
-          }
-
-          resolve(decrypted);
-        } catch (error) {
-          reject(error);
-        }
+        resolve(result[STORAGE_KEY] || {});
       });
     });
   }
 
-  // Set values in storage, auto-encrypting sensitive keys
-  async set(items) {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const encrypted = { ...items };
-
-        // Encrypt sensitive keys
-        for (const key of Object.keys(encrypted)) {
-          if (this.isSensitiveKey(key) && encrypted[key]) {
-            // Only encrypt non-empty values
-            if (encrypted[key].trim()) {
-              encrypted[key] = await cryptoService.encrypt(encrypted[key]);
-            }
-          }
-        }
-
-        this.storage.set(encrypted, () => {
-          if (chrome.runtime.lastError) {
-            reject(chrome.runtime.lastError);
-            return;
-          }
-          resolve();
-        });
-      } catch (error) {
-        console.error('SecureStorage: Set failed', error);
-        reject(error);
-      }
-    });
-  }
-
-  // Remove keys from storage
-  async remove(keys) {
+  // Save the entire tabber storage object
+  async setTabberData(data) {
     return new Promise((resolve, reject) => {
-      this.storage.remove(keys, () => {
+      this.storage.set({ [STORAGE_KEY]: data }, () => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
           return;
@@ -100,10 +52,88 @@ export class SecureStorage {
     });
   }
 
-  // Clear all storage
+  // Get values from storage, auto-decrypting sensitive keys
+  async get(keys) {
+    try {
+      const tabberData = await this.getTabberData();
+      const result = {};
+
+      // If keys is an array, get only those keys
+      const keysToGet = Array.isArray(keys) ? keys : [keys];
+
+      for (const key of keysToGet) {
+        if (tabberData.hasOwnProperty(key)) {
+          let value = tabberData[key];
+
+          // Decrypt sensitive keys
+          if (this.isSensitiveKey(key) && value) {
+            try {
+              if (cryptoService.isEncrypted(value)) {
+                value = await cryptoService.decrypt(value);
+              }
+            } catch (error) {
+              logger.warn(`SecureStorage: Failed to decrypt ${key}, using raw value`, error);
+            }
+          }
+
+          result[key] = value;
+        }
+      }
+
+      return result;
+    } catch (error) {
+      logger.error('SecureStorage: Get failed', error);
+      throw error;
+    }
+  }
+
+  // Set values in storage, auto-encrypting sensitive keys
+  async set(items) {
+    try {
+      const tabberData = await this.getTabberData();
+
+      // Process each item
+      for (const key of Object.keys(items)) {
+        let value = items[key];
+
+        // Encrypt sensitive keys
+        if (this.isSensitiveKey(key) && value) {
+          if (typeof value === 'string' && value.trim()) {
+            value = await cryptoService.encrypt(value);
+          }
+        }
+
+        tabberData[key] = value;
+      }
+
+      await this.setTabberData(tabberData);
+    } catch (error) {
+      logger.error('SecureStorage: Set failed', error);
+      throw error;
+    }
+  }
+
+  // Remove keys from storage
+  async remove(keys) {
+    try {
+      const tabberData = await this.getTabberData();
+      const keysToRemove = Array.isArray(keys) ? keys : [keys];
+
+      for (const key of keysToRemove) {
+        delete tabberData[key];
+      }
+
+      await this.setTabberData(tabberData);
+    } catch (error) {
+      logger.error('SecureStorage: Remove failed', error);
+      throw error;
+    }
+  }
+
+  // Clear all tabber storage
   async clear() {
     return new Promise((resolve, reject) => {
-      this.storage.clear(() => {
+      this.storage.remove([STORAGE_KEY], () => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
           return;
@@ -129,33 +159,126 @@ export class SecureStorage {
   }
 
   // Migrate existing unencrypted data to encrypted format
+  // Also migrates from old flat storage to new nested 'tabber' key format
   async migrateToEncrypted() {
     try {
-      const allData = await this.getRaw(this.options.sensitiveKeys);
+      // First, check for old flat storage format and migrate to new format
+      await this.migrateFromFlatStorage();
+
+      // Then encrypt any unencrypted sensitive keys
+      const tabberData = await this.getTabberData();
       
       for (const key of this.options.sensitiveKeys) {
-        if (allData[key] && !cryptoService.isEncrypted(allData[key])) {
+        if (tabberData[key] && !cryptoService.isEncrypted(tabberData[key])) {
           // Re-save to encrypt
-          await this.set({ [key]: allData[key] });
-          console.log(`SecureStorage: Migrated ${key} to encrypted format`);
+          await this.set({ [key]: tabberData[key] });
+          logger.log(`SecureStorage: Migrated ${key} to encrypted format`);
         }
       }
     } catch (error) {
-      console.error('SecureStorage: Migration failed', error);
+      logger.error('SecureStorage: Migration failed', error);
     }
   }
 
-  // Get raw values without decryption (for migration/debugging)
-  async getRaw(keys) {
+  // Migrate from old flat storage format to nested 'tabber' key format
+  async migrateFromFlatStorage() {
     return new Promise((resolve, reject) => {
-      this.storage.get(keys, (result) => {
+      // Get all old flat keys
+      const oldKeys = [
+        'enabled', 'defaultProvider', 'provider',
+        'openaiKey', 'openaiModel',
+        'claudeKey', 'claudeModel',
+        'groqKey', 'groqModel',
+        'geminiKey', 'geminiModel',
+        'localUrl', 'localModel', 'localApiFormat'
+      ];
+
+      this.storage.get([STORAGE_KEY, ...oldKeys], async (result) => {
         if (chrome.runtime.lastError) {
           reject(chrome.runtime.lastError);
           return;
         }
-        resolve(result);
+
+        // Check if there's old flat data to migrate
+        const hasOldData = oldKeys.some(key => result.hasOwnProperty(key) && result[key] !== undefined);
+        
+        if (hasOldData) {
+          logger.log('SecureStorage: Migrating from flat storage to tabber key format');
+          
+          // Get existing tabber data or start fresh
+          const tabberData = result[STORAGE_KEY] || {};
+
+          // Copy old data into tabber object (don't overwrite existing tabber data)
+          for (const key of oldKeys) {
+            if (result.hasOwnProperty(key) && result[key] !== undefined && !tabberData.hasOwnProperty(key)) {
+              tabberData[key] = result[key];
+            }
+          }
+
+          // Save to new format and remove old keys
+          this.storage.set({ [STORAGE_KEY]: tabberData }, () => {
+            if (chrome.runtime.lastError) {
+              reject(chrome.runtime.lastError);
+              return;
+            }
+
+            // Remove old flat keys
+            this.storage.remove(oldKeys, () => {
+              logger.log('SecureStorage: Migration complete - old flat keys removed');
+              resolve();
+            });
+          });
+        } else {
+          resolve();
+        }
       });
     });
+  }
+
+  // Get raw values without decryption (for migration/debugging)
+  async getRaw(keys) {
+    try {
+      const tabberData = await this.getTabberData();
+      const result = {};
+      const keysToGet = Array.isArray(keys) ? keys : [keys];
+
+      for (const key of keysToGet) {
+        if (tabberData.hasOwnProperty(key)) {
+          result[key] = tabberData[key];
+        }
+      }
+
+      return result;
+    } catch (error) {
+      logger.error('SecureStorage: getRaw failed', error);
+      throw error;
+    }
+  }
+
+  // Get all settings (for debugging)
+  async getAll() {
+    try {
+      const tabberData = await this.getTabberData();
+      const result = { ...tabberData };
+
+      // Decrypt sensitive keys
+      for (const key of this.options.sensitiveKeys) {
+        if (result[key]) {
+          try {
+            if (cryptoService.isEncrypted(result[key])) {
+              result[key] = await cryptoService.decrypt(result[key]);
+            }
+          } catch (error) {
+            logger.warn(`SecureStorage: Failed to decrypt ${key}`, error);
+          }
+        }
+      }
+
+      return result;
+    } catch (error) {
+      logger.error('SecureStorage: getAll failed', error);
+      throw error;
+    }
   }
 }
 
