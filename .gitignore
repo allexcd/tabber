@@ -22,7 +22,6 @@ yarn-error.log*
 
 # Dependencies
 node_modules/
-package-lock.json
 yarn.lock
 
 # Build outputs
