@@ -34,7 +34,7 @@
     "*.css": [
       "stylelint --fix"
     ],
-    "*.{html,md,json}": [
+    "*.{html,md,json,yml,yaml}": [
       "prettier --write"
     ]
   }
