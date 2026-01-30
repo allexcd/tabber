@@ -327,6 +327,9 @@ npm run stylelint:fix     # Fix CSS issues
 
 # Run all checks at once
 npm run check             # Runs lint + format:check + stylelint
+
+# Auto-fix all issues at once
+npm run fix:all           # Runs lint:fix + format + stylelint:fix
 ```
 
 ### Building
