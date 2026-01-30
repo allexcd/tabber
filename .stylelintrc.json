@@ -1,0 +1,12 @@
+{
+  "extends": ["stylelint-config-standard"],
+  "rules": {
+    "selector-class-pattern": "^[a-z][a-z0-9-]*$",
+    "color-function-notation": null,
+    "alpha-value-notation": null,
+    "media-feature-range-notation": null,
+    "property-no-vendor-prefix": null,
+    "no-descending-specificity": null,
+    "font-family-name-quotes": null
+  }
+}

@@ -30,6 +30,9 @@ dist/
 build/
 *.zip
 
+# Resources
+res/
+
 # Extension packaging
 extension.zip
 *.crx
