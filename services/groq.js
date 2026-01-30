@@ -9,7 +9,7 @@ export class GroqProvider {
 
   async complete(prompt) {
     const settings = await secureStorage.get(['groqKey', 'groqModel']);
-    
+
     if (!settings.groqKey) {
       throw new Error('Groq API key not configured');
     }
@@ -20,23 +20,24 @@ export class GroqProvider {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${settings.groqKey}`
+        Authorization: `Bearer ${settings.groqKey}`,
       },
       body: JSON.stringify({
         model: model,
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that organizes browser tabs into groups. Always respond with valid JSON only.'
+            content:
+              'You are a helpful assistant that organizes browser tabs into groups. Always respond with valid JSON only.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         temperature: 0.3,
-        max_tokens: 100
-      })
+        max_tokens: 100,
+      }),
     });
 
     if (!response.ok) {

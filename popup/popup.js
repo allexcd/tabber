@@ -6,7 +6,7 @@ import { logger } from '../services/logger.js';
 document.addEventListener('DOMContentLoaded', () => {
   loadStatus();
   setupEventListeners();
-  
+
   // Listen for storage changes to sync with settings page
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'sync' && changes.tabber && changes.tabber.newValue) {
@@ -25,16 +25,16 @@ async function loadStatus() {
   try {
     // Get status from background service (handles encrypted keys properly)
     const response = await chrome.runtime.sendMessage({ action: 'getFullStatus' });
-    
+
     logger.log('loadStatus - response:', response);
-    
+
     if (!response) {
       // Fallback if background service doesn't respond
       logger.log('No response from background, using fallback');
       await loadStatusFallback();
       return;
     }
-    
+
     const indicator = document.getElementById('status-indicator');
     const statusLabel = document.getElementById('status-label');
     const providerLabel = document.getElementById('provider-label');
@@ -87,10 +87,19 @@ async function loadStatus() {
 
 // Fallback status check using direct storage access
 async function loadStatusFallback() {
-  const settings = await secureStorage.get(['enabled', 'defaultProvider', 'openaiKey', 'claudeKey', 'groqKey', 'geminiKey', 'localUrl', 'localModel']);
-  
+  const settings = await secureStorage.get([
+    'enabled',
+    'defaultProvider',
+    'openaiKey',
+    'claudeKey',
+    'groqKey',
+    'geminiKey',
+    'localUrl',
+    'localModel',
+  ]);
+
   logger.log('loadStatusFallback - settings:', settings);
-  
+
   const indicator = document.getElementById('status-indicator');
   const statusLabel = document.getElementById('status-label');
   const providerLabel = document.getElementById('provider-label');
@@ -100,9 +109,9 @@ async function loadStatusFallback() {
   const groupAllBtn = document.getElementById('group-all-btn');
 
   const isConfigured = checkConfiguration(settings);
-  
+
   logger.log('loadStatusFallback - isConfigured:', isConfigured);
-  
+
   if (!isConfigured) {
     indicator.className = 'status-indicator unconfigured';
     statusLabel.textContent = 'Not Configured';
@@ -145,7 +154,7 @@ async function loadStatusFallback() {
 function checkConfiguration(settings) {
   const provider = settings.defaultProvider;
   if (!provider) return false;
-  
+
   // For encrypted keys, just check if they exist and are non-empty
   // The actual validation happens in the background service
   if (provider === 'openai' && settings.openaiKey && settings.openaiKey.trim()) return true;
@@ -153,18 +162,18 @@ function checkConfiguration(settings) {
   if (provider === 'groq' && settings.groqKey && settings.groqKey.trim()) return true;
   if (provider === 'gemini' && settings.geminiKey && settings.geminiKey.trim()) return true;
   if (provider === 'local' && settings.localUrl && settings.localModel) return true;
-  
+
   return false;
 }
 
 // Get human-readable provider name
 function getProviderName(provider) {
   const names = {
-    'openai': 'Using OpenAI',
-    'claude': 'Using Claude',
-    'groq': 'Using Groq',
-    'gemini': 'Using Gemini',
-    'local': 'Using Local LLM'
+    openai: 'Using OpenAI',
+    claude: 'Using Claude',
+    groq: 'Using Groq',
+    gemini: 'Using Gemini',
+    local: 'Using Local LLM',
   };
   return names[provider] || 'Unknown provider';
 }
@@ -183,7 +192,7 @@ function setupEventListeners() {
     const btn = document.getElementById('reprocess-btn');
     btn.textContent = 'Processing...';
     btn.disabled = true;
-    
+
     try {
       await chrome.runtime.sendMessage({ action: 'reprocessTab' });
       btn.textContent = 'Done!';
@@ -211,7 +220,7 @@ function setupEventListeners() {
     const originalText = btn.textContent;
     btn.textContent = '⏳ Grouping tabs...';
     btn.disabled = true;
-    
+
     try {
       const response = await chrome.runtime.sendMessage({ action: 'groupAllTabs' });
       if (response.success) {
@@ -222,7 +231,7 @@ function setupEventListeners() {
     } catch (error) {
       btn.textContent = '✗ Error';
     }
-    
+
     setTimeout(() => {
       btn.textContent = originalText;
       btn.disabled = false;

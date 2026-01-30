@@ -222,46 +222,46 @@ This document describes the architecture and module relationships of the AI Tab 
 
 ### Core Files
 
-| File | Purpose |
-|------|---------|
-| `manifest.json` | Chrome Extension manifest (MV3), permissions, entry points |
+| File            | Purpose                                                         |
+| --------------- | --------------------------------------------------------------- |
+| `manifest.json` | Chrome Extension manifest (MV3), permissions, entry points      |
 | `background.js` | Service worker: tab listeners, grouping logic, message handling |
 
 ### Popup (`popup/`)
 
-| File | Purpose |
-|------|---------|
-| `popup.html` | Popup UI structure |
-| `popup.css` | Popup styling |
-| `popup.js` | Status display, button handlers, storage sync listener |
+| File         | Purpose                                                |
+| ------------ | ------------------------------------------------------ |
+| `popup.html` | Popup UI structure                                     |
+| `popup.css`  | Popup styling                                          |
+| `popup.js`   | Status display, button handlers, storage sync listener |
 
 ### Settings (`settings/`)
 
-| File | Purpose |
-|------|---------|
-| `settings.html` | Settings page markup with provider cards |
-| `settings.css` | Settings page styling, provider cards, modals |
-| `settings.js` | Main orchestration: load/save settings, event handlers |
-| `model-cache.js` | Load/save cached models from local storage |
-| `model-fetcher.js` | Fetch models from provider APIs dynamically |
-| `changelog.js` | Display changelog modal from changelog.json |
-| `settings-fallback.js` | CSP-compliant fallback validation script |
+| File                   | Purpose                                                |
+| ---------------------- | ------------------------------------------------------ |
+| `settings.html`        | Settings page markup with provider cards               |
+| `settings.css`         | Settings page styling, provider cards, modals          |
+| `settings.js`          | Main orchestration: load/save settings, event handlers |
+| `model-cache.js`       | Load/save cached models from local storage             |
+| `model-fetcher.js`     | Fetch models from provider APIs dynamically            |
+| `changelog.js`         | Display changelog modal from changelog.json            |
+| `settings-fallback.js` | CSP-compliant fallback validation script               |
 
 ### Services (`services/`)
 
-| File | Purpose |
-|------|---------|
-| `ai-service.js` | Unified interface for all AI providers |
-| `openai.js` | OpenAI API integration (GPT models) |
-| `claude.js` | Anthropic Claude API integration |
-| `groq.js` | Groq API integration (free tier) |
-| `gemini.js` | Google Gemini API integration (free tier) |
-| `local-llm.js` | Local LLM support (Ollama, LM Studio) |
-| `sanitizer.js` | Remove PII from tab data before AI processing |
-| `crypto.js` | AES-256-GCM encryption/decryption |
-| `secure-storage.js` | Encrypted chrome.storage.sync wrapper |
-| `local-storage.js` | chrome.storage.local wrapper for cached data |
-| `logger.js` | Centralized debug logging with toggle |
+| File                | Purpose                                       |
+| ------------------- | --------------------------------------------- |
+| `ai-service.js`     | Unified interface for all AI providers        |
+| `openai.js`         | OpenAI API integration (GPT models)           |
+| `claude.js`         | Anthropic Claude API integration              |
+| `groq.js`           | Groq API integration (free tier)              |
+| `gemini.js`         | Google Gemini API integration (free tier)     |
+| `local-llm.js`      | Local LLM support (Ollama, LM Studio)         |
+| `sanitizer.js`      | Remove PII from tab data before AI processing |
+| `crypto.js`         | AES-256-GCM encryption/decryption             |
+| `secure-storage.js` | Encrypted chrome.storage.sync wrapper         |
+| `local-storage.js`  | chrome.storage.local wrapper for cached data  |
+| `logger.js`         | Centralized debug logging with toggle         |
 
 ## Import Dependencies
 
@@ -384,6 +384,7 @@ The extension uses Chrome's storage APIs for state management with automatic syn
 ### Adding a New AI Provider
 
 1. Create `services/newprovider.js` implementing:
+
    ```javascript
    export class NewProvider {
      async configure(settings) { ... }
@@ -393,6 +394,7 @@ The extension uses Chrome's storage APIs for state management with automatic syn
    ```
 
 2. Register in `services/ai-service.js`:
+
    ```javascript
    import { NewProvider } from './newprovider.js';
    this.providers.newprovider = new NewProvider();
@@ -409,6 +411,7 @@ The extension uses Chrome's storage APIs for state management with automatic syn
 ### Enabling Debug Logging
 
 Edit `services/logger.js`:
+
 ```javascript
 const DEBUG_ENABLED = true; // Set to true for verbose logging
 ```

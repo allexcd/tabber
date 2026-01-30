@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.0] - 2025-01-29
 
 ### Added
+
 - Initial release of AI Tab Grouper extension
 - Support for multiple AI providers: Claude/Anthropic, Google Gemini, Groq, OpenAI, Local LLM
 - Support for Groq AI provider with fast inference and generous free tier (14,400 requests/day)
@@ -52,12 +53,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Provider-specific settings saving (only saves credentials for selected provider)
 
 ### Changed
+
 - Modularized settings.js into separate focused modules (model-cache.js, model-fetcher.js, changelog.js)
 - Renamed "Regroup Tab" button to "Regroup Tabs" in popup
 - Save Settings button now saves only the selected provider's settings instead of all providers
 - Make Default button now validates and saves provider settings before setting as default
 
 ### Fixed
+
 - Default provider button showing incorrectly when no provider is set
 - Inline script causing CSP violation - moved to external settings-fallback.js
 - Enable Extension toggle now persists immediately on click
@@ -67,6 +70,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Regroup Tabs and Group All Open Tabs buttons now disabled when extension is disabled
 
 ### Security
+
 - All API keys stored encrypted at rest (OpenAI, Claude, Groq, Gemini)
 - User data sanitized before being sent to AI providers
 - Strong key derivation with PBKDF2 (100k iterations)
@@ -74,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extended secure storage to encrypt Groq and Gemini API keys
 
 ### Technical
+
 - Chrome Extension Manifest V3 compliance
 - Vanilla JavaScript implementation (no build step required)
 - Modular architecture with separate services
@@ -86,6 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Error handling and fallback mechanisms throughout
 
 ### Documentation
+
 - Comprehensive README with setup instructions
 - Security documentation explaining encryption approach
 - LM Studio CORS configuration guide

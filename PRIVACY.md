@@ -9,6 +9,7 @@ AI Tab Grouper ("the Extension") is a Chrome browser extension that uses artific
 ## Data Collection and Use
 
 ### What Data We Access
+
 - **Tab Information**: Tab titles and URLs from your active browsing sessions
 - **API Keys**: Your AI provider API keys (OpenAI, Claude, Groq, Gemini)
 - **Settings**: Your extension preferences and configuration
@@ -34,9 +35,11 @@ AI Tab Grouper ("the Extension") is a Chrome browser extension that uses artific
 ## Data Sharing
 
 ### AI Providers
+
 When you use the extension, sanitized tab data (titles and cleaned URLs) is sent to your selected AI provider:
+
 - **OpenAI**: If you choose OpenAI as your provider
-- **Anthropic**: If you choose Claude as your provider  
+- **Anthropic**: If you choose Claude as your provider
 - **Groq**: If you choose Groq as your provider
 - **Google**: If you choose Gemini as your provider
 - **Local LLM**: If you use a local AI server, data stays on your machine
@@ -44,6 +47,7 @@ When you use the extension, sanitized tab data (titles and cleaned URLs) is sent
 Each provider has their own privacy policies governing their use of data.
 
 ### No Other Sharing
+
 - We do not sell, trade, or transfer your data to third parties
 - We do not use your data for advertising or marketing
 - We do not store your data on external servers
@@ -79,13 +83,15 @@ We may update this privacy policy from time to time. Updates will be posted with
 ## Contact Information
 
 For questions about this privacy policy or the extension:
+
 - **GitHub Issues**: [https://github.com/allexcd/tabber/issues](https://github.com/allexcd/tabber/issues)
 - **Repository**: [https://github.com/allexcd/tabber](https://github.com/allexcd/tabber)
 
 ## Third-Party AI Provider Policies
 
 When using AI providers, also review their privacy policies:
+
 - **OpenAI**: [https://openai.com/privacy](https://openai.com/privacy)
-- **Anthropic**: [https://www.anthropic.com/privacy](https://www.anthropic.com/privacy)  
+- **Anthropic**: [https://www.anthropic.com/privacy](https://www.anthropic.com/privacy)
 - **Groq**: [https://groq.com/privacy-policy](https://groq.com/privacy-policy)
 - **Google Gemini**: [https://policies.google.com/privacy](https://policies.google.com/privacy)

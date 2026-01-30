@@ -11,35 +11,35 @@ export class Sanitizer {
       removeSSN: true,
       removeIPAddresses: true,
       customPatterns: [],
-      ...options
+      ...options,
     };
 
     // Built-in patterns for sensitive data
     this.patterns = {
       email: {
         regex: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/g,
-        replacement: '[EMAIL]'
+        replacement: '[EMAIL]',
       },
       phone: {
         regex: /(\+?1[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}/g,
-        replacement: '[PHONE]'
+        replacement: '[PHONE]',
       },
       accountNumber: {
         regex: /\b\d{8,16}\b/g,
-        replacement: '[ACCOUNT]'
+        replacement: '[ACCOUNT]',
       },
       creditCard: {
         regex: /\b(?:\d{4}[-\s]?){3}\d{4}\b/g,
-        replacement: '[CARD]'
+        replacement: '[CARD]',
       },
       ssn: {
         regex: /\b\d{3}[-\s]?\d{2}[-\s]?\d{4}\b/g,
-        replacement: '[SSN]'
+        replacement: '[SSN]',
       },
       ipAddress: {
         regex: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
-        replacement: '[IP]'
-      }
+        replacement: '[IP]',
+      },
     };
   }
 
@@ -59,16 +59,25 @@ export class Sanitizer {
       sanitized = sanitized.replace(this.patterns.phone.regex, this.patterns.phone.replacement);
     }
     if (this.options.removeAccountNumbers) {
-      sanitized = sanitized.replace(this.patterns.accountNumber.regex, this.patterns.accountNumber.replacement);
+      sanitized = sanitized.replace(
+        this.patterns.accountNumber.regex,
+        this.patterns.accountNumber.replacement
+      );
     }
     if (this.options.removeCreditCards) {
-      sanitized = sanitized.replace(this.patterns.creditCard.regex, this.patterns.creditCard.replacement);
+      sanitized = sanitized.replace(
+        this.patterns.creditCard.regex,
+        this.patterns.creditCard.replacement
+      );
     }
     if (this.options.removeSSN) {
       sanitized = sanitized.replace(this.patterns.ssn.regex, this.patterns.ssn.replacement);
     }
     if (this.options.removeIPAddresses) {
-      sanitized = sanitized.replace(this.patterns.ipAddress.regex, this.patterns.ipAddress.replacement);
+      sanitized = sanitized.replace(
+        this.patterns.ipAddress.regex,
+        this.patterns.ipAddress.replacement
+      );
     }
 
     // Apply custom patterns
@@ -89,27 +98,46 @@ export class Sanitizer {
 
     try {
       const urlObj = new URL(url);
-      
+
       // Sensitive query parameter names to remove
       const sensitiveParams = [
-        'token', 'key', 'apikey', 'api_key', 'password', 'pwd', 'pass',
-        'secret', 'auth', 'session', 'sessionid', 'session_id',
-        'access_token', 'refresh_token', 'bearer',
-        'account', 'accountid', 'account_id',
-        'ssn', 'social', 'credit', 'card',
-        'email', 'phone', 'mobile'
+        'token',
+        'key',
+        'apikey',
+        'api_key',
+        'password',
+        'pwd',
+        'pass',
+        'secret',
+        'auth',
+        'session',
+        'sessionid',
+        'session_id',
+        'access_token',
+        'refresh_token',
+        'bearer',
+        'account',
+        'accountid',
+        'account_id',
+        'ssn',
+        'social',
+        'credit',
+        'card',
+        'email',
+        'phone',
+        'mobile',
       ];
 
       // Remove sensitive query parameters
-      sensitiveParams.forEach(param => {
+      sensitiveParams.forEach((param) => {
         if (urlObj.searchParams.has(param)) {
           urlObj.searchParams.set(param, '[REDACTED]');
         }
       });
 
       // Also sanitize the pathname for potential sensitive data
-      let sanitizedPath = this.sanitizeText(urlObj.pathname);
-      
+      const sanitizedPath = this.sanitizeText(urlObj.pathname);
+
       // Return simplified URL: just origin + sanitized path
       return `${urlObj.origin}${sanitizedPath}`;
     } catch (error) {
@@ -122,7 +150,7 @@ export class Sanitizer {
   sanitizeTabData(title, url) {
     return {
       title: this.sanitizeText(title),
-      url: this.sanitizeUrl(url)
+      url: this.sanitizeUrl(url),
     };
   }
 

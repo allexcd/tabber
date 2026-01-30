@@ -15,7 +15,7 @@ export class SecureStorage {
       sensitiveKeys: ['openaiKey', 'claudeKey', 'groqKey', 'geminiKey'],
       // Storage type: 'sync' or 'local'
       storageType: 'sync',
-      ...options
+      ...options,
     };
 
     this.storage = chrome.storage[this.options.storageType];
@@ -62,7 +62,7 @@ export class SecureStorage {
       const keysToGet = Array.isArray(keys) ? keys : [keys];
 
       for (const key of keysToGet) {
-        if (tabberData.hasOwnProperty(key)) {
+        if (Object.hasOwn(tabberData, key)) {
           let value = tabberData[key];
 
           // Decrypt sensitive keys
@@ -167,7 +167,7 @@ export class SecureStorage {
 
       // Then encrypt any unencrypted sensitive keys
       const tabberData = await this.getTabberData();
-      
+
       for (const key of this.options.sensitiveKeys) {
         if (tabberData[key] && !cryptoService.isEncrypted(tabberData[key])) {
           // Re-save to encrypt
@@ -185,12 +185,20 @@ export class SecureStorage {
     return new Promise((resolve, reject) => {
       // Get all old flat keys
       const oldKeys = [
-        'enabled', 'defaultProvider', 'provider',
-        'openaiKey', 'openaiModel',
-        'claudeKey', 'claudeModel',
-        'groqKey', 'groqModel',
-        'geminiKey', 'geminiModel',
-        'localUrl', 'localModel', 'localApiFormat'
+        'enabled',
+        'defaultProvider',
+        'provider',
+        'openaiKey',
+        'openaiModel',
+        'claudeKey',
+        'claudeModel',
+        'groqKey',
+        'groqModel',
+        'geminiKey',
+        'geminiModel',
+        'localUrl',
+        'localModel',
+        'localApiFormat',
       ];
 
       this.storage.get([STORAGE_KEY, ...oldKeys], async (result) => {
@@ -200,17 +208,23 @@ export class SecureStorage {
         }
 
         // Check if there's old flat data to migrate
-        const hasOldData = oldKeys.some(key => result.hasOwnProperty(key) && result[key] !== undefined);
-        
+        const hasOldData = oldKeys.some(
+          (key) => Object.hasOwn(result, key) && result[key] !== undefined
+        );
+
         if (hasOldData) {
           logger.log('SecureStorage: Migrating from flat storage to tabber key format');
-          
+
           // Get existing tabber data or start fresh
           const tabberData = result[STORAGE_KEY] || {};
 
           // Copy old data into tabber object (don't overwrite existing tabber data)
           for (const key of oldKeys) {
-            if (result.hasOwnProperty(key) && result[key] !== undefined && !tabberData.hasOwnProperty(key)) {
+            if (
+              Object.hasOwn(result, key) &&
+              result[key] !== undefined &&
+              !Object.hasOwn(tabberData, key)
+            ) {
               tabberData[key] = result[key];
             }
           }
@@ -243,7 +257,7 @@ export class SecureStorage {
       const keysToGet = Array.isArray(keys) ? keys : [keys];
 
       for (const key of keysToGet) {
-        if (tabberData.hasOwnProperty(key)) {
+        if (Object.hasOwn(tabberData, key)) {
           result[key] = tabberData[key];
         }
       }
