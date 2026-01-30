@@ -309,7 +309,11 @@ The extension uses a modular security architecture:
 
 ### Code Quality
 
-The project uses ESLint, Prettier, and Stylelint for code quality:
+The project uses ESLint, Prettier, and Stylelint for code quality. Each tool serves a different purpose:
+
+- **Prettier** (`format:check`) - Formatting only: indentation, spacing, quotes, semicolons
+- **ESLint** (`lint`) - Code quality: unused variables, potential bugs, best practices, code patterns
+- **Stylelint** (`stylelint`) - CSS quality: selector patterns, specificity, vendor prefixes, CSS-specific rules
 
 ```bash
 # Install dev dependencies
