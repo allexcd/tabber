@@ -12,4 +12,8 @@ updates:
       - 'automated'
     commit-message:
       prefix: 'chore'
+      prefix-development: 'chore'
       include: 'scope'
+    ignore:
+      - dependency-name: 'eslint'
+        update-types: ['version-update:semver-major']
