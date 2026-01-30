@@ -1,5 +1,7 @@
 # AI Tab Grouper
 
+[![CI](https://github.com/allexcd/tabber/actions/workflows/ci.yml/badge.svg)](https://github.com/allexcd/tabber/actions)
+
 🗂️ Automatically organize your Chrome tabs using AI
 
 ## Features
