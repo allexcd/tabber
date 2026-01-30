@@ -9,34 +9,37 @@ export class GeminiProvider {
 
   async complete(prompt) {
     const settings = await secureStorage.get(['geminiKey', 'geminiModel']);
-    
+
     if (!settings.geminiKey) {
       throw new Error('Google Gemini API key not configured');
     }
 
     const model = settings.geminiModel || 'gemini-1.5-flash';
 
-    const response = await fetch(`${this.baseUrl}/${model}:generateContent?key=${settings.geminiKey}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              {
-                text: `You are a helpful assistant that organizes browser tabs into groups. Always respond with valid JSON only.\n\n${prompt}`
-              }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 100
-        }
-      })
-    });
+    const response = await fetch(
+      `${this.baseUrl}/${model}:generateContent?key=${settings.geminiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `You are a helpful assistant that organizes browser tabs into groups. Always respond with valid JSON only.\n\n${prompt}`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.3,
+            maxOutputTokens: 100,
+          },
+        }),
+      }
+    );
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({}));

@@ -18,6 +18,7 @@
 ## Installation
 
 ### From Source
+
 1. Clone this repository
 2. Open Chrome and go to `chrome://extensions/`
 3. Enable **Developer mode** (top right toggle)
@@ -25,6 +26,7 @@
 5. Configure your AI provider in the extension settings
 
 ### From Chrome Web Store
+
 Coming soon...
 
 ## Configuration
@@ -46,6 +48,7 @@ Coming soon...
 ## AI Provider Setup
 
 ### OpenAI
+
 ```
 API Key: sk-...
 Models: Dynamic fetching available + static options:
@@ -59,6 +62,7 @@ Models: Dynamic fetching available + static options:
 **Pro Tip**: Enter your API key and click the "🔄 Fetch" button to automatically load all models available to your account, including beta/preview models!
 
 ### Claude (Anthropic)
+
 ```
 API Key: sk-ant-...
 Models: Manual selection (no API endpoint available):
@@ -69,6 +73,7 @@ Models: Manual selection (no API endpoint available):
 ```
 
 ### Local LLM
+
 ```
 Server URL: http://localhost:11434 (Ollama)
 Model Name: llama3.2, mistral, etc.
@@ -76,6 +81,7 @@ API Format: OpenAI Compatible or Ollama Native
 ```
 
 **LM Studio Setup:**
+
 1. Start your model server in LM Studio
 2. Go to **Server Settings** → **Developer** section
 3. **Enable CORS** (required for browser extensions)
@@ -87,6 +93,7 @@ API Format: OpenAI Compatible or Ollama Native
 Stay current with the latest AI models:
 
 ### OpenAI Auto-Update
+
 1. Enter your OpenAI API key in settings
 2. Click **"🔄 Fetch"** next to the model dropdown
 3. Extension queries OpenAI's API for all available models
@@ -94,28 +101,31 @@ Stay current with the latest AI models:
 5. Includes beta/preview models if you have access
 
 ### Custom Model Support
+
 Both OpenAI and Claude support custom model names:
+
 1. Select **"Custom Model..."** from dropdown
 2. Enter exact model name (e.g., `gpt-6`, `claude-5-opus`)
 3. Use bleeding-edge models as soon as they're released
 
 ## Group Colors
 
-| Color | Content Type |
-|-------|-------------|
-| 🔵 Blue | Development, coding, technical |
-| 🟢 Green | Finance, money, productivity |
-| 🔴 Red | Entertainment, videos, gaming |
-| 🟡 Yellow | Social media, communication |
-| 🟣 Purple | Education, learning, research |
-| 🩷 Pink | Shopping, lifestyle |
-| 🩵 Cyan | News, articles, reading |
-| 🟠 Orange | Work, business, professional |
-| ⚫ Grey | Utilities, settings, misc |
+| Color     | Content Type                   |
+| --------- | ------------------------------ |
+| 🔵 Blue   | Development, coding, technical |
+| 🟢 Green  | Finance, money, productivity   |
+| 🔴 Red    | Entertainment, videos, gaming  |
+| 🟡 Yellow | Social media, communication    |
+| 🟣 Purple | Education, learning, research  |
+| 🩷 Pink   | Shopping, lifestyle            |
+| 🩵 Cyan   | News, articles, reading        |
+| 🟠 Orange | Work, business, professional   |
+| ⚫ Grey   | Utilities, settings, misc      |
 
 ## Privacy & Security
 
 ### 🔒 Data Protection
+
 - **API Key Encryption**: All API keys are encrypted using AES-256-GCM before storage
 - **Device-bound Keys**: Encryption keys are derived from your unique extension instance
 - **Auto-migration**: Existing unencrypted keys are automatically encrypted on update
@@ -124,12 +134,14 @@ Both OpenAI and Claude support custom model names:
 ### 🔓 What Gets Encrypted vs Unencrypted
 
 **Encrypted (Sensitive Data):**
+
 - `openaiKey` - OpenAI API keys (sk-...)
 - `claudeKey` - Claude API keys (sk-ant-...)
-- `groqKey` - Groq API keys (gsk_...)
+- `groqKey` - Groq API keys (gsk\_...)
 - `geminiKey` - Google Gemini API keys
 
 **Unencrypted (Non-sensitive Settings):**
+
 - `enabled` - Extension on/off toggle
 - `defaultProvider` - Selected AI provider ("claude", "gemini", "groq", "openai", "local")
 - `*Model` - Selected model names for each provider
@@ -138,8 +150,11 @@ Both OpenAI and Claude support custom model names:
 - `fetchedModels` - Cached model lists from API fetches
 
 **Why this split?** API keys are secrets that grant access to paid services and need maximum protection. Settings like model names and toggles aren't sensitive and encrypting everything would hurt performance and cross-device syncing.
+
 ### 🛡️ Data Sanitization
+
 Before sending tab data to AI providers, sensitive information is automatically removed:
+
 - Email addresses → `[EMAIL]`
 - Phone numbers → `[PHONE]`
 - Account numbers → `[ACCOUNT]`
@@ -149,12 +164,14 @@ Before sending tab data to AI providers, sensitive information is automatically 
 - Sensitive URL parameters are redacted
 
 ### 📡 Network Security
+
 - All API calls use HTTPS encryption
 - Tab titles and sanitized URLs are sent to your chosen AI provider
 - No data is stored on external servers beyond the AI API calls
 - The extension only processes tabs when enabled
 
 ### 💡 Privacy Tips
+
 - Use **Local LLM** for maximum privacy (no data leaves your machine)
 - Review tab titles before bulk processing sensitive windows
 - API keys are never exposed in the UI after being saved
@@ -162,6 +179,7 @@ Before sending tab data to AI providers, sensitive information is automatically 
 ## Development
 
 ### Project Structure
+
 ```
 Tabber/
 ├── manifest.json           # Extension manifest (MV3)
@@ -201,35 +219,36 @@ The extension uses Chrome's storage APIs with a unified key structure for organi
 
 #### Storage Services
 
-| Service | Storage Type | Purpose |
-|---------|-------------|---------|
-| `secureStorage` | `chrome.storage.sync` | Encrypted API keys & settings (synced across devices) |
-| `localStorage` | `chrome.storage.local` | Cached data & preferences (device-specific) |
+| Service         | Storage Type           | Purpose                                               |
+| --------------- | ---------------------- | ----------------------------------------------------- |
+| `secureStorage` | `chrome.storage.sync`  | Encrypted API keys & settings (synced across devices) |
+| `localStorage`  | `chrome.storage.local` | Cached data & preferences (device-specific)           |
 
 #### Data Structure
 
 All extension data is stored under a single `tabber` key in each storage type:
 
 **Sync Storage** (`chrome.storage.sync.tabber`):
+
 ```javascript
 {
   tabber: {
     // Extension state
     enabled: boolean,
     defaultProvider: "claude" | "gemini" | "groq" | "openai" | "local",
-    
+
     // API Keys (AES-256-GCM encrypted)
     openaiKey: "encrypted:v1:...",
     claudeKey: "encrypted:v1:...",
     groqKey: "encrypted:v1:...",
     geminiKey: "encrypted:v1:...",
-    
+
     // Model selections
     openaiModel: "gpt-4o-mini",
     claudeModel: "claude-3-5-haiku-20241022",
     groqModel: "llama-3.1-70b-versatile",
     geminiModel: "gemini-1.5-flash",
-    
+
     // Local LLM settings
     localUrl: "http://localhost:11434",
     localModel: "llama3.2",
@@ -239,6 +258,7 @@ All extension data is stored under a single `tabber` key in each storage type:
 ```
 
 **Local Storage** (`chrome.storage.local.tabber`):
+
 ```javascript
 {
   tabber: {
@@ -273,12 +293,15 @@ Both storage services include automatic migration from legacy flat-key formats:
 ```
 
 Migration runs on:
+
 - Extension installation
 - First settings page load
 - First popup interaction
 
 ### Security Architecture
+
 The extension uses a modular security architecture:
+
 - **Sanitizer** - Removes PII before AI processing
 - **CryptoService** - AES-GCM encryption/decryption with device-bound keys
 - **SecureStorage** - Transparent encryption layer for Chrome sync storage
@@ -315,6 +338,7 @@ npm run package           # Creates extension.zip (~62KB)
 ```
 
 The packaging script:
+
 - Creates a clean `dist/` directory
 - Copies only extension files (no dev dependencies)
 - Generates `extension.zip` ready for upload

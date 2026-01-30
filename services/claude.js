@@ -9,7 +9,7 @@ export class ClaudeProvider {
 
   async complete(prompt) {
     const settings = await secureStorage.get(['claudeKey', 'claudeModel']);
-    
+
     if (!settings.claudeKey) {
       throw new Error('Claude API key not configured');
     }
@@ -22,7 +22,7 @@ export class ClaudeProvider {
         'Content-Type': 'application/json',
         'x-api-key': settings.claudeKey,
         'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
+        'anthropic-dangerous-direct-browser-access': 'true',
       },
       body: JSON.stringify({
         model: model,
@@ -30,10 +30,10 @@ export class ClaudeProvider {
         messages: [
           {
             role: 'user',
-            content: prompt
-          }
-        ]
-      })
+            content: prompt,
+          },
+        ],
+      }),
     });
 
     if (!response.ok) {

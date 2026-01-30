@@ -5,7 +5,7 @@ import { secureStorage } from './secure-storage.js';
 export class LocalLLMProvider {
   async complete(prompt) {
     const settings = await secureStorage.get(['localUrl', 'localModel', 'localApiFormat']);
-    
+
     if (!settings.localUrl) {
       throw new Error('Local LLM server URL not configured');
     }
@@ -15,7 +15,7 @@ export class LocalLLMProvider {
     }
 
     const apiFormat = settings.localApiFormat || 'openai';
-    
+
     if (apiFormat === 'ollama') {
       return this.completeOllama(prompt, settings);
     } else {
@@ -30,23 +30,24 @@ export class LocalLLMProvider {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: settings.localModel,
         messages: [
           {
             role: 'system',
-            content: 'You are a helpful assistant that organizes browser tabs into groups. Always respond with valid JSON only.'
+            content:
+              'You are a helpful assistant that organizes browser tabs into groups. Always respond with valid JSON only.',
           },
           {
             role: 'user',
-            content: prompt
-          }
+            content: prompt,
+          },
         ],
         temperature: 0.3,
-        max_tokens: 100
-      })
+        max_tokens: 100,
+      }),
     });
 
     if (!response.ok) {
@@ -65,16 +66,16 @@ export class LocalLLMProvider {
     const response = await fetch(url, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: settings.localModel,
         prompt: `You are a helpful assistant that organizes browser tabs into groups. Always respond with valid JSON only.\n\n${prompt}`,
         stream: false,
         options: {
-          temperature: 0.3
-        }
-      })
+          temperature: 0.3,
+        },
+      }),
     });
 
     if (!response.ok) {

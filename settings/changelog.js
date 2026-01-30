@@ -50,30 +50,34 @@ function renderChangelog(data, container) {
     return;
   }
 
-  const html = data.versions.map((version) => {
-    const sections = version.sections || {};
-    const sectionHtml = Object.keys(sections).map((sectionTitle) => {
-      const items = sections[sectionTitle] || [];
-      if (!items.length) {
-        return '';
-      }
-      const listItems = items.map(item => `<li>${item}</li>`).join('');
-      return `
+  const html = data.versions
+    .map((version) => {
+      const sections = version.sections || {};
+      const sectionHtml = Object.keys(sections)
+        .map((sectionTitle) => {
+          const items = sections[sectionTitle] || [];
+          if (!items.length) {
+            return '';
+          }
+          const listItems = items.map((item) => `<li>${item}</li>`).join('');
+          return `
         <div class="changelog-section">
           <h4>${sectionTitle}</h4>
           <ul>${listItems}</ul>
         </div>
       `;
-    }).join('');
+        })
+        .join('');
 
-    return `
+      return `
       <div class="changelog-version">
         <h3>${version.version}</h3>
         ${version.date ? `<div class="changelog-date">${version.date}</div>` : ''}
         ${sectionHtml}
       </div>
     `;
-  }).join('');
+    })
+    .join('');
 
   container.innerHTML = html || '<p class="loading">No changelog data available.</p>';
 }

@@ -19,13 +19,10 @@ export class CryptoService {
     const passwordBuffer = encoder.encode(password);
 
     // Import password as key material
-    const keyMaterial = await crypto.subtle.importKey(
-      'raw',
-      passwordBuffer,
-      'PBKDF2',
-      false,
-      ['deriveBits', 'deriveKey']
-    );
+    const keyMaterial = await crypto.subtle.importKey('raw', passwordBuffer, 'PBKDF2', false, [
+      'deriveBits',
+      'deriveKey',
+    ]);
 
     // Derive a key using PBKDF2
     return await crypto.subtle.deriveKey(
@@ -33,7 +30,7 @@ export class CryptoService {
         name: 'PBKDF2',
         salt: salt,
         iterations: this.iterations,
-        hash: 'SHA-256'
+        hash: 'SHA-256',
       },
       keyMaterial,
       { name: this.algorithm, length: this.keyLength },
@@ -46,12 +43,12 @@ export class CryptoService {
   async getDeviceKey() {
     // Use extension ID as a stable identifier
     const extensionId = chrome.runtime.id || 'ai-tab-grouper';
-    
+
     // Create a device-specific salt using extension ID
     const encoder = new TextEncoder();
     const idBuffer = encoder.encode(extensionId);
     const hashBuffer = await crypto.subtle.digest('SHA-256', idBuffer);
-    
+
     return new Uint8Array(hashBuffer).slice(0, this.saltLength);
   }
 
@@ -66,7 +63,7 @@ export class CryptoService {
       const iv = crypto.getRandomValues(new Uint8Array(this.ivLength));
 
       // Use user password or device-specific key
-      const password = userPassword || await this.getDevicePassword();
+      const password = userPassword || (await this.getDevicePassword());
       const key = await this.deriveKey(password, salt);
 
       // Encrypt the data
@@ -77,9 +74,7 @@ export class CryptoService {
       );
 
       // Combine salt + iv + encrypted data
-      const combined = new Uint8Array(
-        salt.length + iv.length + encryptedData.byteLength
-      );
+      const combined = new Uint8Array(salt.length + iv.length + encryptedData.byteLength);
       combined.set(salt, 0);
       combined.set(iv, salt.length);
       combined.set(new Uint8Array(encryptedData), salt.length + iv.length);
@@ -104,7 +99,7 @@ export class CryptoService {
       const encryptedData = combined.slice(this.saltLength + this.ivLength);
 
       // Use user password or device-specific key
-      const password = userPassword || await this.getDevicePassword();
+      const password = userPassword || (await this.getDevicePassword());
       const key = await this.deriveKey(password, salt);
 
       // Decrypt the data
@@ -134,18 +129,18 @@ export class CryptoService {
     if (!value || typeof value !== 'string') {
       return false;
     }
-    
+
     // Check if it's base64 and has minimum expected length
     // (salt + iv + at least some encrypted data)
-    const minLength = (this.saltLength + this.ivLength + 16) * 4 / 3;
+    const minLength = ((this.saltLength + this.ivLength + 16) * 4) / 3;
     const base64Regex = /^[A-Za-z0-9+/]+=*$/;
-    
+
     // OpenAI keys start with "sk-" so they're not encrypted
     // Claude keys start with "sk-ant-" so they're not encrypted
     if (value.startsWith('sk-')) {
       return false;
     }
-    
+
     return value.length >= minLength && base64Regex.test(value);
   }
 

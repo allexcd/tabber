@@ -47,7 +47,7 @@ export class LocalStorageService {
       const keysToGet = Array.isArray(keys) ? keys : [keys];
 
       for (const key of keysToGet) {
-        if (tabberData.hasOwnProperty(key)) {
+        if (Object.hasOwn(tabberData, key)) {
           result[key] = tabberData[key];
         }
       }
@@ -129,11 +129,13 @@ export class LocalStorageService {
         }
 
         // Check if there's old flat data to migrate
-        const hasOldData = oldKeys.some(key => result.hasOwnProperty(key) && result[key] !== undefined);
-        
+        const hasOldData = oldKeys.some(
+          (key) => Object.hasOwn(result, key) && result[key] !== undefined
+        );
+
         if (hasOldData) {
           logger.log('LocalStorage: Migrating from flat storage to tabber key format');
-          
+
           // Get existing tabber data or start fresh
           const tabberData = result[STORAGE_KEY] || {};
 

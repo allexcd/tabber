@@ -22,7 +22,11 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
     }
 
     // Skip browser internal pages
-    if (tab.url?.startsWith('chrome://') || tab.url?.startsWith('chrome-extension://') || tab.url?.startsWith('about:')) {
+    if (
+      tab.url?.startsWith('chrome://') ||
+      tab.url?.startsWith('chrome-extension://') ||
+      tab.url?.startsWith('about:')
+    ) {
       return;
     }
 
@@ -37,8 +41,17 @@ async function processTab(tabId, tab, force = false) {
 
   try {
     // Check if AI is configured
-    const settings = await secureStorage.get(['defaultProvider', 'openaiKey', 'claudeKey', 'localUrl', 'localModel', 'groqKey', 'geminiKey', 'enabled']);
-    
+    const settings = await secureStorage.get([
+      'defaultProvider',
+      'openaiKey',
+      'claudeKey',
+      'localUrl',
+      'localModel',
+      'groqKey',
+      'geminiKey',
+      'enabled',
+    ]);
+
     if (!settings.enabled && !force) {
       processingTabs.delete(tabId);
       return;
@@ -64,7 +77,6 @@ async function processTab(tabId, tab, force = false) {
 
     // Execute the grouping
     await executeGrouping(tabId, tab.windowId, decision, existingGroups);
-
   } catch (error) {
     logger.error('Error processing tab', error);
   } finally {
@@ -75,23 +87,23 @@ async function processTab(tabId, tab, force = false) {
 // Check if AI provider is properly configured
 function isConfigured(settings) {
   const provider = settings.defaultProvider;
-  
+
   if (provider === 'openai' && settings.openaiKey && settings.openaiKey.trim()) return true;
   if (provider === 'claude' && settings.claudeKey && settings.claudeKey.trim()) return true;
   if (provider === 'local' && settings.localUrl && settings.localModel) return true;
   if (provider === 'groq' && settings.groqKey && settings.groqKey.trim()) return true;
   if (provider === 'gemini' && settings.geminiKey && settings.geminiKey.trim()) return true;
-  
+
   return false;
 }
 
 // Get existing tab groups in a window
 async function getExistingGroups(windowId) {
   const groups = await chrome.tabGroups.query({ windowId });
-  return groups.map(g => ({
+  return groups.map((g) => ({
     id: g.id,
     title: g.title || 'Unnamed',
-    color: g.color
+    color: g.color,
   }));
 }
 
@@ -100,7 +112,7 @@ async function executeGrouping(tabId, windowId, decision, existingGroups) {
   try {
     // Check if we should use an existing group
     const existingGroup = existingGroups.find(
-      g => g.title.toLowerCase() === decision.groupName.toLowerCase()
+      (g) => g.title.toLowerCase() === decision.groupName.toLowerCase()
     );
 
     if (existingGroup) {
@@ -110,14 +122,14 @@ async function executeGrouping(tabId, windowId, decision, existingGroups) {
     } else {
       // Create new group
       const groupId = await chrome.tabs.group({ tabIds: tabId, createProperties: { windowId } });
-      
+
       // Set group properties
       const color = validateColor(decision.color);
       await chrome.tabGroups.update(groupId, {
         title: decision.groupName,
-        color: color
+        color: color,
       });
-      
+
       logger.log(`Created new group "${decision.groupName}" with color ${color}`);
     }
   } catch (error) {
@@ -141,7 +153,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     const providerName = message.config?.provider || 'unknown';
     logger.log(`🔗 Testing ${providerName.toUpperCase()} connection...`);
     testConnectionWithConfig(message.config)
-      .then(result => {
+      .then((result) => {
         if (result.success) {
           logger.log(`✅ ${providerName.toUpperCase()} connection test successful`);
         } else {
@@ -149,19 +161,19 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         }
         sendResponse(result);
       })
-      .catch(error => {
+      .catch((error) => {
         logger.log(`❌ ${providerName.toUpperCase()} connection test error:`, error.message);
         sendResponse({ success: false, error: error.message });
       });
     return true; // Keep channel open for async response
   }
-  
+
   if (message.action === 'settingsSaved') {
     logger.log('⚙️ Settings updated - provider:', message.provider || 'none');
     sendResponse({ success: true });
     return true;
   }
-  
+
   if (message.action === 'reprocessTab') {
     chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
       if (tabs[0]) {
@@ -177,37 +189,48 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 
   if (message.action === 'getStatus') {
-    secureStorage.get(['defaultProvider', 'enabled'])
-      .then(settings => {
+    secureStorage
+      .get(['defaultProvider', 'enabled'])
+      .then((settings) => {
         sendResponse({
           enabled: settings.enabled ?? false,
-          provider: settings.defaultProvider ?? 'none'
+          provider: settings.defaultProvider ?? 'none',
         });
       })
       .catch(() => {
         sendResponse({
           enabled: false,
-          provider: 'none'
+          provider: 'none',
         });
       });
     return true;
   }
 
   if (message.action === 'getFullStatus') {
-    secureStorage.get(['defaultProvider', 'enabled', 'openaiKey', 'claudeKey', 'localUrl', 'localModel', 'groqKey', 'geminiKey'])
-      .then(settings => {
+    secureStorage
+      .get([
+        'defaultProvider',
+        'enabled',
+        'openaiKey',
+        'claudeKey',
+        'localUrl',
+        'localModel',
+        'groqKey',
+        'geminiKey',
+      ])
+      .then((settings) => {
         sendResponse({
           enabled: settings.enabled ?? false,
           provider: settings.defaultProvider ?? 'none',
-          isConfigured: isConfigured(settings)
+          isConfigured: isConfigured(settings),
         });
       })
-      .catch(error => {
+      .catch((error) => {
         sendResponse({
           enabled: false,
           provider: 'none',
           isConfigured: false,
-          error: error.message
+          error: error.message,
         });
       });
     return true;
@@ -215,8 +238,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === 'groupAllTabs') {
     groupAllTabs()
-      .then(result => sendResponse(result))
-      .catch(error => sendResponse({ success: false, error: error.message }));
+      .then((result) => sendResponse(result))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
 });
@@ -225,32 +248,41 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 chrome.runtime.onInstalled.addListener(async () => {
   // Migrate from old flat storage format if needed
   await secureStorage.migrateToEncrypted();
-  
+
   // Load default provider if set, otherwise just disable
   const settings = await secureStorage.get(['defaultProvider']);
-  await secureStorage.set({ 
+  await secureStorage.set({
     enabled: false,
-    provider: settings.defaultProvider || ''
+    provider: settings.defaultProvider || '',
   });
   logger.log('Extension installed');
 });
 
 // Group all open tabs in the current window
 async function groupAllTabs() {
-  const settings = await secureStorage.get(['defaultProvider', 'openaiKey', 'claudeKey', 'localUrl', 'localModel', 'groqKey', 'geminiKey']);
-  
+  const settings = await secureStorage.get([
+    'defaultProvider',
+    'openaiKey',
+    'claudeKey',
+    'localUrl',
+    'localModel',
+    'groqKey',
+    'geminiKey',
+  ]);
+
   if (!isConfigured(settings)) {
     return { success: false, error: 'AI not configured. Open settings first.' };
   }
 
   // Get all tabs in current window that aren't pinned or already grouped
   const tabs = await chrome.tabs.query({ currentWindow: true });
-  const ungroupedTabs = tabs.filter(tab => 
-    !tab.pinned && 
-    tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE &&
-    !tab.url?.startsWith('chrome://') &&
-    !tab.url?.startsWith('chrome-extension://') &&
-    !tab.url?.startsWith('about:')
+  const ungroupedTabs = tabs.filter(
+    (tab) =>
+      !tab.pinned &&
+      tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE &&
+      !tab.url?.startsWith('chrome://') &&
+      !tab.url?.startsWith('chrome-extension://') &&
+      !tab.url?.startsWith('about:')
   );
 
   if (ungroupedTabs.length === 0) {
@@ -264,13 +296,13 @@ async function groupAllTabs() {
     try {
       // Skip if tab doesn't have a title yet
       if (!tab.title || tab.title === 'New Tab') continue;
-      
+
       // Pass force=true to bypass the enabled check
       await processTab(tab.id, tab, true);
       groupedCount++;
-      
+
       // Small delay to avoid overwhelming the AI API
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       logger.error(`Failed to group tab "${tab.title}"`, error);
     }
@@ -287,7 +319,7 @@ async function testConnectionWithConfig(config) {
 
   try {
     let provider;
-    
+
     // Create provider instance based on config
     switch (config.provider) {
       case 'openai':
@@ -297,35 +329,35 @@ async function testConnectionWithConfig(config) {
         // Temporarily use the provided config for testing
         provider = aiService.providers.openai;
         break;
-        
+
       case 'claude':
         if (!config.claudeKey) {
           return { success: false, error: 'Claude API key is required' };
         }
         provider = aiService.providers.claude;
         break;
-        
+
       case 'local':
         if (!config.localUrl || !config.localModel) {
           return { success: false, error: 'Local LLM URL and model are required' };
         }
         provider = aiService.providers.local;
         break;
-        
+
       case 'groq':
         if (!config.groqKey) {
           return { success: false, error: 'Groq API key is required' };
         }
         provider = aiService.providers.groq;
         break;
-        
+
       case 'gemini':
         if (!config.geminiKey) {
           return { success: false, error: 'Google Gemini API key is required' };
         }
         provider = aiService.providers.gemini;
         break;
-        
+
       default:
         return { success: false, error: `Unknown provider: ${config.provider}` };
     }
@@ -333,7 +365,6 @@ async function testConnectionWithConfig(config) {
     // Test the connection using a simple test prompt
     const response = await testProviderWithConfig(provider, config);
     return { success: true, response };
-    
   } catch (error) {
     return { success: false, error: error.message };
   }
@@ -341,9 +372,6 @@ async function testConnectionWithConfig(config) {
 
 // Test a specific provider with the given configuration
 async function testProviderWithConfig(provider, config) {
-  // Temporarily store current values and use test config
-  const originalStorage = chrome.storage.sync;
-  
   // Create a mock storage that returns our test config
   const mockStorage = {
     get: (keys) => {
@@ -351,7 +379,7 @@ async function testProviderWithConfig(provider, config) {
         const result = {};
         if (keys.includes) {
           // Array of keys
-          keys.forEach(key => {
+          keys.forEach((key) => {
             if (config[key] !== undefined) {
               result[key] = config[key];
             }
@@ -367,13 +395,13 @@ async function testProviderWithConfig(provider, config) {
         }
         resolve(result);
       });
-    }
+    },
   };
-  
+
   // Temporarily replace secureStorage's get method to use our config
   const originalSecureGet = secureStorage.get;
   secureStorage.get = mockStorage.get;
-  
+
   try {
     const response = await provider.complete('Respond with just the word "OK"');
     return response;

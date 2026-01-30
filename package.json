@@ -12,6 +12,7 @@
     "stylelint": "stylelint \"**/*.css\"",
     "stylelint:fix": "stylelint \"**/*.css\" --fix",
     "check": "npm run lint && npm run format:check && npm run stylelint",
+    "fix": "npm run lint:fix && npm run format && npm run stylelint:fix",
     "package": "node scripts/package.js"
   },
   "devDependencies": {

@@ -16,9 +16,9 @@ export class AIService {
       gemini: new GeminiProvider(),
       groq: new GroqProvider(),
       openai: new OpenAIProvider(),
-      local: new LocalLLMProvider()
+      local: new LocalLLMProvider(),
     };
-    
+
     // Sanitizer is injected as a dependency
     this.sanitizer = sanitizer;
   }
@@ -38,18 +38,19 @@ export class AIService {
 
     // Sanitize tab data before sending to AI
     const sanitizedData = this.sanitizer.sanitizeTabData(title, url);
-    
+
     const prompt = this.buildPrompt(sanitizedData.title, sanitizedData.url, existingGroups);
     const response = await provider.complete(prompt);
-    
+
     return this.parseResponse(response);
   }
 
   // Build the prompt for the AI
   buildPrompt(title, url, existingGroups) {
-    const groupList = existingGroups.length > 0
-      ? existingGroups.map(g => `- "${g.title}" (${g.color})`).join('\n')
-      : 'No existing groups';
+    const groupList =
+      existingGroups.length > 0
+        ? existingGroups.map((g) => `- "${g.title}" (${g.color})`).join('\n')
+        : 'No existing groups';
 
     return `You are a tab organization assistant. Analyze the following browser tab and decide how to group it.
 
@@ -91,13 +92,13 @@ Do not include any explanation, just the JSON.`;
         const parsed = JSON.parse(jsonMatch[0]);
         return {
           groupName: parsed.groupName || 'Misc',
-          color: parsed.color || 'grey'
+          color: parsed.color || 'grey',
         };
       }
     } catch (error) {
       logger.error('Failed to parse AI response', error);
     }
-    
+
     // Default fallback
     return { groupName: 'Misc', color: 'grey' };
   }

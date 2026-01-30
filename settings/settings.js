@@ -3,17 +3,17 @@
 
 import { secureStorage } from '../services/secure-storage.js';
 import { logger } from '../services/logger.js';
-import { 
-  loadCachedModels, 
-  isCustomModel, 
-  getModelValue, 
-  loadCachedModelsForProvider 
+import {
+  loadCachedModels,
+  isCustomModel,
+  getModelValue,
+  loadCachedModelsForProvider,
 } from './model-cache.js';
-import { 
-  fetchOpenAIModels, 
-  fetchClaudeModels, 
-  fetchGroqModels, 
-  fetchGeminiModels 
+import {
+  fetchOpenAIModels,
+  fetchClaudeModels,
+  fetchGroqModels,
+  fetchGeminiModels,
 } from './model-fetcher.js';
 import { setupChangelogModal } from './changelog.js';
 
@@ -26,11 +26,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load cached models first
     await loadCachedModels();
     logger.log('Cached models loaded');
-    
+
     // Migrate any existing unencrypted API keys
     await secureStorage.migrateToEncrypted();
     logger.log('Migration complete');
-    
+
     // Load settings and setup
     await loadSettings();
     logger.log('Settings loaded');
@@ -58,7 +58,7 @@ async function loadSettings() {
     'groqKey',
     'groqModel',
     'geminiKey',
-    'geminiModel'
+    'geminiModel',
   ]);
 
   // Set enabled toggle
@@ -127,9 +127,9 @@ async function loadSettings() {
 
   // Update default provider UI - pass actual saved default, not the fallback
   updateDefaultProviderUI(settings.defaultProvider);
-  
+
   logger.log('loadSettings - defaultProvider:', settings.defaultProvider);
-  
+
   // Update enabled toggle state based on default provider
   updateEnabledToggleState(settings.defaultProvider);
 }
@@ -141,20 +141,21 @@ function setupEventListeners() {
     try {
       await secureStorage.set({ enabled: e.target.checked });
       logger.log('Extension enabled state saved:', e.target.checked);
-      
+
       // Notify service worker about extension state change
-      chrome.runtime.sendMessage({ 
-        action: 'settingsSaved', 
-        enabled: e.target.checked 
-      }).catch(() => {}); // Ignore if service worker isn't running
-      
+      chrome.runtime
+        .sendMessage({
+          action: 'settingsSaved',
+          enabled: e.target.checked,
+        })
+        .catch(() => {}); // Ignore if service worker isn't running
     } catch (error) {
       logger.error('Failed to save enabled state:', error);
     }
   });
 
   // Provider selection
-  document.querySelectorAll('input[name="provider"]').forEach(radio => {
+  document.querySelectorAll('input[name="provider"]').forEach((radio) => {
     radio.addEventListener('change', (e) => {
       showProviderSettings(e.target.value);
     });
@@ -181,23 +182,31 @@ function setupEventListeners() {
   });
 
   // Fetch models buttons - pass showStatus as callback
-  document.getElementById('fetch-openai-models').addEventListener('click', () => fetchOpenAIModels(showStatus));
-  document.getElementById('fetch-claude-models').addEventListener('click', () => fetchClaudeModels(showStatus));
-  document.getElementById('fetch-groq-models').addEventListener('click', () => fetchGroqModels(showStatus));
-  document.getElementById('fetch-gemini-models').addEventListener('click', () => fetchGeminiModels(showStatus));
+  document
+    .getElementById('fetch-openai-models')
+    .addEventListener('click', () => fetchOpenAIModels(showStatus));
+  document
+    .getElementById('fetch-claude-models')
+    .addEventListener('click', () => fetchClaudeModels(showStatus));
+  document
+    .getElementById('fetch-groq-models')
+    .addEventListener('click', () => fetchGroqModels(showStatus));
+  document
+    .getElementById('fetch-gemini-models')
+    .addEventListener('click', () => fetchGeminiModels(showStatus));
 
   // Save buttons (one in each provider form + legacy ID)
-  document.querySelectorAll('.save-btn, #save-btn').forEach(btn => {
+  document.querySelectorAll('.save-btn, #save-btn').forEach((btn) => {
     btn.addEventListener('click', saveSettings);
   });
 
   // Test buttons (one in each provider form + legacy ID)
-  document.querySelectorAll('.test-btn, #test-btn').forEach(btn => {
+  document.querySelectorAll('.test-btn, #test-btn').forEach((btn) => {
     btn.addEventListener('click', testConnection);
   });
 
   // Make Default buttons
-  document.querySelectorAll('.default-btn').forEach(btn => {
+  document.querySelectorAll('.default-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
       const provider = e.target.dataset.provider;
       makeProviderDefault(provider);
@@ -205,12 +214,24 @@ function setupEventListeners() {
   });
 
   // API key field listeners - update default button state when keys change
-  document.getElementById('openai-key').addEventListener('input', () => updateDefaultButtonState('openai'));
-  document.getElementById('claude-key').addEventListener('input', () => updateDefaultButtonState('claude'));
-  document.getElementById('groq-key').addEventListener('input', () => updateDefaultButtonState('groq'));
-  document.getElementById('gemini-key').addEventListener('input', () => updateDefaultButtonState('gemini'));
-  document.getElementById('local-url').addEventListener('input', () => updateDefaultButtonState('local'));
-  document.getElementById('local-model').addEventListener('input', () => updateDefaultButtonState('local'));
+  document
+    .getElementById('openai-key')
+    .addEventListener('input', () => updateDefaultButtonState('openai'));
+  document
+    .getElementById('claude-key')
+    .addEventListener('input', () => updateDefaultButtonState('claude'));
+  document
+    .getElementById('groq-key')
+    .addEventListener('input', () => updateDefaultButtonState('groq'));
+  document
+    .getElementById('gemini-key')
+    .addEventListener('input', () => updateDefaultButtonState('gemini'));
+  document
+    .getElementById('local-url')
+    .addEventListener('input', () => updateDefaultButtonState('local'));
+  document
+    .getElementById('local-model')
+    .addEventListener('input', () => updateDefaultButtonState('local'));
 
   // Listen for storage changes to sync with popup
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -231,9 +252,9 @@ function setupEventListeners() {
 // Show the settings section for the selected provider
 function showProviderSettings(provider) {
   logger.log('Switching to provider:', provider);
-  
+
   // Hide all provider settings
-  document.querySelectorAll('.provider-settings').forEach(section => {
+  document.querySelectorAll('.provider-settings').forEach((section) => {
     section.classList.remove('active');
   });
 
@@ -241,7 +262,7 @@ function showProviderSettings(provider) {
   const settingsSection = document.getElementById(`${provider}-settings`);
   if (settingsSection) {
     settingsSection.classList.add('active');
-    
+
     // Load cached models if available
     logger.log('Loading cached models for:', provider);
     loadCachedModelsForProvider(provider);
@@ -251,17 +272,17 @@ function showProviderSettings(provider) {
 // Save settings to Chrome storage
 async function saveSettings() {
   const provider = document.querySelector('input[name="provider"]:checked')?.value;
-  
+
   if (!provider) {
     showStatus('Please select a provider first', 'error');
     return;
   }
-  
+
   // Build settings object with only the selected provider's settings
   const settings = {
-    enabled: document.getElementById('enabled').checked
+    enabled: document.getElementById('enabled').checked,
   };
-  
+
   // Only save settings for the selected provider
   switch (provider) {
     case 'openai':
@@ -296,18 +317,23 @@ async function saveSettings() {
 
   try {
     await secureStorage.set(settings);
-    
+
     logger.log(`Saved settings for ${provider.toUpperCase()}`);
-    
+
     // Update the default button state for this provider (in case credentials were added)
     updateDefaultButtonState(provider);
-    
+
     // Notify service worker about settings update
-    chrome.runtime.sendMessage({ 
-      action: 'settingsSaved', 
-      provider: provider 
-    }).catch(() => {}); // Ignore if service worker isn't running
-    showStatus(`${provider.charAt(0).toUpperCase() + provider.slice(1)} settings saved!`, 'success');
+    chrome.runtime
+      .sendMessage({
+        action: 'settingsSaved',
+        provider: provider,
+      })
+      .catch(() => {}); // Ignore if service worker isn't running
+    showStatus(
+      `${provider.charAt(0).toUpperCase() + provider.slice(1)} settings saved!`,
+      'success'
+    );
   } catch (error) {
     logger.error('Save failed:', error);
     showStatus(`Save failed: ${error.message}`, 'error');
@@ -352,7 +378,7 @@ function validateSettings(provider, settings) {
 // Test connection to the selected AI provider
 async function testConnection() {
   const provider = document.querySelector('input[name="provider"]:checked')?.value;
-  
+
   if (!provider) {
     showStatus('Please select an AI provider first', 'error');
     return;
@@ -363,7 +389,7 @@ async function testConnection() {
     provider: provider,
     openaiKey: document.getElementById('openai-key').value.trim(),
     openaiModel: getModelValue('openai-model', 'openai-custom-model'),
-    claudeKey: document.getElementById('claude-key').value.trim(), 
+    claudeKey: document.getElementById('claude-key').value.trim(),
     claudeModel: getModelValue('claude-model', 'claude-custom-model'),
     localUrl: document.getElementById('local-url').value.trim(),
     localModel: document.getElementById('local-model').value.trim(),
@@ -371,7 +397,7 @@ async function testConnection() {
     groqKey: document.getElementById('groq-key').value.trim(),
     groqModel: getModelValue('groq-model', 'groq-custom-model'),
     geminiKey: document.getElementById('gemini-key').value.trim(),
-    geminiModel: getModelValue('gemini-model', 'gemini-custom-model')
+    geminiModel: getModelValue('gemini-model', 'gemini-custom-model'),
   };
 
   // Validate the current provider has required fields
@@ -382,15 +408,15 @@ async function testConnection() {
   }
 
   showStatus('Testing connection...', 'info');
-  
+
   logger.log(`Testing connection for ${provider.toUpperCase()} provider`);
 
   try {
-    const response = await chrome.runtime.sendMessage({ 
+    const response = await chrome.runtime.sendMessage({
       action: 'testConnection',
-      config: testConfig
+      config: testConfig,
     });
-    
+
     if (response.success) {
       showStatus('✓ Connection successful!', 'success');
     } else {
@@ -406,19 +432,19 @@ async function testConnection() {
 function showStatus(message, type) {
   // Update the active provider's status element
   const activeSettings = document.querySelector('.provider-settings.active');
-  const statusElements = activeSettings 
+  const statusElements = activeSettings
     ? activeSettings.querySelectorAll('.status')
     : document.querySelectorAll('#status, .status');
-  
-  statusElements.forEach(status => {
+
+  statusElements.forEach((status) => {
     status.textContent = message;
     status.className = `status ${type}`;
   });
-  
+
   // Auto-hide success messages
   if (type === 'success') {
     setTimeout(() => {
-      statusElements.forEach(status => {
+      statusElements.forEach((status) => {
         status.classList.add('hidden');
       });
     }, 3000);
@@ -430,7 +456,7 @@ async function makeProviderDefault(provider) {
   try {
     // Build settings object with only the default provider and its specific settings
     const settings = { defaultProvider: provider };
-    
+
     // Only save settings for the selected provider
     switch (provider) {
       case 'openai':
@@ -455,32 +481,37 @@ async function makeProviderDefault(provider) {
         settings.geminiModel = getModelValue('gemini-model', 'gemini-custom-model');
         break;
     }
-    
+
     // Validate the provider has required fields
     const validation = validateSettings(provider, settings);
     if (!validation.valid) {
       showStatus(validation.message, 'error');
       return;
     }
-    
+
     // Save only the default provider and its settings
     await secureStorage.set(settings);
-    
+
     logger.log(`Set ${provider.toUpperCase()} as default provider (with settings saved)`);
-    
+
     // Update UI to show which is default
     updateDefaultProviderUI(provider);
-    
+
     // Update enabled toggle state
     updateEnabledToggleState(provider);
-    
+
     // Notify service worker about default provider change
-    chrome.runtime.sendMessage({ 
-      action: 'settingsSaved', 
-      provider: provider 
-    }).catch(() => {}); // Ignore if service worker isn't running
-    
-    showStatus(`✓ ${provider.charAt(0).toUpperCase() + provider.slice(1)} set as default provider!`, 'success');
+    chrome.runtime
+      .sendMessage({
+        action: 'settingsSaved',
+        provider: provider,
+      })
+      .catch(() => {}); // Ignore if service worker isn't running
+
+    showStatus(
+      `✓ ${provider.charAt(0).toUpperCase() + provider.slice(1)} set as default provider!`,
+      'success'
+    );
   } catch (error) {
     logger.error('Make default failed:', error);
     showStatus(`Failed to set default: ${error.message}`, 'error');
@@ -489,10 +520,10 @@ async function makeProviderDefault(provider) {
 
 // Update UI to show which provider is default
 function updateDefaultProviderUI(currentDefault) {
-  document.querySelectorAll('.default-btn').forEach(btn => {
+  document.querySelectorAll('.default-btn').forEach((btn) => {
     const provider = btn.dataset.provider;
     const hasCredentials = providerHasCredentials(provider);
-    
+
     if (currentDefault && provider === currentDefault) {
       // Replace button with green label for current default
       btn.textContent = '⭐ Default Provider';
@@ -521,8 +552,10 @@ function providerHasCredentials(provider) {
     case 'gemini':
       return document.getElementById('gemini-key').value.trim() !== '';
     case 'local':
-      return document.getElementById('local-url').value.trim() !== '' && 
-             document.getElementById('local-model').value.trim() !== '';
+      return (
+        document.getElementById('local-url').value.trim() !== '' &&
+        document.getElementById('local-model').value.trim() !== ''
+      );
     default:
       return false;
   }
@@ -532,10 +565,10 @@ function providerHasCredentials(provider) {
 function updateDefaultButtonState(provider) {
   const btn = document.querySelector(`.default-btn[data-provider="${provider}"]`);
   if (!btn) return;
-  
+
   const hasCredentials = providerHasCredentials(provider);
   const isCurrentDefault = btn.classList.contains('active');
-  
+
   if (!isCurrentDefault) {
     btn.disabled = !hasCredentials;
   }
@@ -546,9 +579,14 @@ function updateEnabledToggleState(defaultProvider) {
   const enabledToggle = document.getElementById('enabled');
   const warningMessage = document.getElementById('no-provider-warning');
   const switchElement = enabledToggle.parentElement; // The switch label
-  
-  logger.log('updateEnabledToggleState - defaultProvider:', defaultProvider, 'type:', typeof defaultProvider);
-  
+
+  logger.log(
+    'updateEnabledToggleState - defaultProvider:',
+    defaultProvider,
+    'type:',
+    typeof defaultProvider
+  );
+
   if (!defaultProvider) {
     // No default provider - disable toggle and show warning
     logger.log('No default provider - disabling toggle');

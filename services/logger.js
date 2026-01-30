@@ -72,7 +72,7 @@ const logger = {
     if (DEBUG_ENABLED) {
       console.timeEnd(`[Tabber] ${label}`);
     }
-  }
+  },
 };
 
 export { logger };
