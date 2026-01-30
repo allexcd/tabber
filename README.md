@@ -345,8 +345,19 @@ The project uses Husky and lint-staged to automatically run code quality checks 
 - **JavaScript files**: Auto-fixed with ESLint and formatted with Prettier
 - **CSS files**: Auto-fixed with Stylelint
 - **HTML/MD/JSON files**: Formatted with Prettier
+- **Commit messages**: Validated with commitlint to ensure conventional format
 
 If any checks fail, the commit will be blocked until issues are resolved. This ensures all committed code meets quality standards.
+
+#### Continuous Integration
+
+GitHub Actions automatically runs on all pushes and pull requests:
+
+- **Code Quality**: Runs ESLint, Prettier, and Stylelint checks
+- **PR Title Validation**: Ensures PR titles follow Conventional Commits format
+- **Package Verification**: Tests the extension packaging process
+
+All checks must pass before a PR can be merged.
 
 #### Editor Configuration
 
@@ -383,11 +394,100 @@ MIT License - see LICENSE file for details
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
+Contributions are welcome! Please follow these guidelines:
+
+### Commit Message Convention
+
+This project uses [Conventional Commits](https://www.conventionalcommits.org/) to maintain a clean and semantic commit history. All commits are validated using [commitlint](https://commitlint.js.org/).
+
+#### Commit Format
+
+```
+<type>: <Subject starting with capital letter>
+```
+
+#### Valid Types
+
+- `feat`: New feature or enhancement
+- `fix`: Bug fix
+- `docs`: Documentation changes
+- `style`: Code style changes (formatting, semicolons, etc.)
+- `refactor`: Code refactoring without feature changes
+- `perf`: Performance improvements
+- `test`: Adding or updating tests
+- `build`: Build system changes
+- `ci`: CI configuration changes
+- `chore`: Other changes (dependencies, config, etc.)
+- `revert`: Revert a previous commit
+
+#### Examples
+
+**Valid commits:**
+
+```
+feat: Add dynamic model fetching for all AI providers
+fix: Resolve memory leak in tab grouping
+docs: Update installation instructions
+chore: Update dependencies to latest versions
+refactor: Simplify API key encryption logic
+```
+
+**Invalid commits:**
+
+```
+added new feature            # Missing type
+feat: add new feature        # Subject must start with capital
+feature: Add tabs            # Invalid type
+Updated the README           # Missing type
+```
+
+#### Local Validation
+
+The project uses Husky pre-commit hooks to automatically:
+
+- Lint and fix JavaScript files with ESLint
+- Format code with Prettier
+- Lint and fix CSS files with Stylelint
+- **Validate commit messages** with commitlint
+
+If your commit message doesn't follow the convention, the commit will be rejected with a helpful error message.
+
+### Pull Request Guidelines
+
+1. **Fork the repository** and create a feature branch
+2. **Make your changes** following the code quality standards
+3. **Test thoroughly** to ensure everything works
+4. **Follow commit conventions** for all commits
+5. **Create a PR** with a descriptive title following the same format
+
+#### PR Title Format
+
+PR titles must follow the same Conventional Commits format:
+
+```
+<type>: <Subject starting with capital letter>
+```
+
+**Examples:**
+
+```
+feat: Add support for GPT-5 model
+fix: Resolve tab grouping race condition
+docs: Add contributing guidelines
+chore: Add commit message linting
+```
+
+The PR title validation runs automatically in GitHub Actions and will block merging if the title doesn't follow the convention.
+
+### Development Workflow
+
+1. Fork and clone the repository
+2. Install dependencies: `npm install`
 3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
+4. Run quality checks: `npm run check`
+5. Fix any issues: `npm run fix:all`
+6. Commit with conventional format: `git commit -m "feat: Your feature"`
+7. Push and create a pull request
 
 ## Version History
 
