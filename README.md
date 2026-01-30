@@ -356,6 +356,7 @@ GitHub Actions automatically runs on all pushes and pull requests:
 - **Code Quality**: Runs ESLint, Prettier, and Stylelint checks
 - **PR Title Validation**: Ensures PR titles follow Conventional Commits format
 - **Package Verification**: Tests the extension packaging process
+- **Security Scanning**: CodeQL analyzes code for vulnerabilities (weekly + on PRs)
 
 All checks must pass before a PR can be merged.
 
