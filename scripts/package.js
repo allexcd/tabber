@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, rmSync, statSync } from 'fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, rmSync, statSync } from 'fs';
 import { execSync } from 'child_process';
 import { resolve, dirname } from 'path';
 import { fileURLToPath } from 'url';
@@ -6,7 +6,11 @@ import { fileURLToPath } from 'url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = resolve(__dirname, '..');
 const DIST = resolve(ROOT, 'dist');
-const ZIP_NAME = 'extension.zip';
+
+// Read version from package.json
+const packageJson = JSON.parse(readFileSync(resolve(ROOT, 'package.json'), 'utf-8'));
+const version = packageJson.version;
+const ZIP_NAME = `tabber-release-v${version}.zip`;
 
 const INCLUDE = [
   'manifest.json',

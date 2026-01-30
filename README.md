@@ -284,8 +284,43 @@ The extension uses a modular security architecture:
 - **SecureStorage** - Transparent encryption layer for Chrome sync storage
 - **LocalStorage** - Non-sensitive cached data management
 
+### Code Quality
+
+The project uses ESLint, Prettier, and Stylelint for code quality:
+
+```bash
+# Install dev dependencies
+npm install
+
+# Check code quality
+npm run lint              # Check JavaScript
+npm run format:check      # Check code formatting
+npm run stylelint         # Check CSS
+
+# Auto-fix issues
+npm run lint:fix          # Fix JavaScript issues
+npm run format            # Format all files
+npm run stylelint:fix     # Fix CSS issues
+
+# Run all checks at once
+npm run check             # Runs lint + format:check + stylelint
+```
+
 ### Building
-No build process required - load directly as unpacked extension.
+
+Package the extension for Chrome Web Store:
+
+```bash
+npm run package           # Creates extension.zip (~62KB)
+```
+
+The packaging script:
+- Creates a clean `dist/` directory
+- Copies only extension files (no dev dependencies)
+- Generates `extension.zip` ready for upload
+- Excludes `node_modules/`, config files, and dev tools
+
+For development, no build process is required - load directly as unpacked extension.
 
 ## License
 
