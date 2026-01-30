@@ -332,6 +332,28 @@ npm run check             # Runs lint + format:check + stylelint
 npm run fix:all           # Runs lint:fix + format + stylelint:fix
 ```
 
+#### Pre-commit Hooks
+
+The project uses Husky and lint-staged to automatically run code quality checks before each commit:
+
+- **JavaScript files**: Auto-fixed with ESLint and formatted with Prettier
+- **CSS files**: Auto-fixed with Stylelint
+- **HTML/MD/JSON files**: Formatted with Prettier
+
+If any checks fail, the commit will be blocked until issues are resolved. This ensures all committed code meets quality standards.
+
+#### Editor Configuration
+
+An `.editorconfig` file is provided for consistent coding styles across different editors:
+
+- UTF-8 encoding
+- LF line endings
+- 2-space indentation for JS/CSS/HTML/JSON
+- Trim trailing whitespace
+- Insert final newline
+
+Most modern editors (VS Code, WebStorm, Sublime, etc.) support EditorConfig automatically.
+
 ### Building
 
 Package the extension for Chrome Web Store:
