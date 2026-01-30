@@ -7,6 +7,7 @@
  * - package.json
  * - manifest.json
  * - CHANGELOG.json
+ * - CHANGELOG.md
  * - settings/settings.html
  *
  * Usage:
@@ -29,6 +30,7 @@ const FILES_TO_UPDATE = {
   packageJson: path.join(rootDir, 'package.json'),
   manifestJson: path.join(rootDir, 'manifest.json'),
   changelogJson: path.join(rootDir, 'CHANGELOG.json'),
+  changelogMd: path.join(rootDir, 'CHANGELOG.md'),
   settingsHtml: path.join(rootDir, 'settings', 'settings.html'),
 };
 
@@ -115,6 +117,47 @@ function updateChangelogJson(oldVersion, newVersion) {
 }
 
 /**
+ * Update CHANGELOG.md - add new version section under [Unreleased]
+ */
+function updateChangelogMd(oldVersion, newVersion) {
+  const filePath = FILES_TO_UPDATE.changelogMd;
+  let content = fs.readFileSync(filePath, 'utf8');
+
+  const today = new Date().toISOString().split('T')[0];
+  const newVersionSection = `## [${newVersion}] - ${today}
+
+### Added
+- Version bump from ${oldVersion} to ${newVersion}
+
+### Changed
+
+### Fixed
+
+### Security
+
+### Technical
+
+`;
+
+  // Insert the new version section after the [Unreleased] section
+  const unreleasedIndex = content.indexOf('## [Unreleased]');
+  if (unreleasedIndex !== -1) {
+    // Find the end of the [Unreleased] section (next ## section or end of content)
+    const nextSectionMatch = content.slice(unreleasedIndex + 15).match(/\n## \[/);
+    const insertIndex = nextSectionMatch
+      ? unreleasedIndex + 15 + nextSectionMatch.index + 1
+      : content.length;
+
+    content = content.slice(0, insertIndex) + '\n' + newVersionSection + content.slice(insertIndex);
+    fs.writeFileSync(filePath, content);
+    console.log(`✓ Updated ${path.basename(filePath)}: Added v${newVersion} section`);
+  } else {
+    console.log(`⚠ Warning: Could not find [Unreleased] section in ${path.basename(filePath)}`);
+    console.log(`  Please manually add the v${newVersion} section to CHANGELOG.md`);
+  }
+}
+
+/**
  * Update settings.html
  */
 function updateSettingsHtml(oldVersion, newVersion) {
@@ -157,12 +200,13 @@ function main() {
     const oldVersion = updatePackageJson(newVersion);
     updateManifestJson(oldVersion, newVersion);
     updateChangelogJson(oldVersion, newVersion);
+    updateChangelogMd(oldVersion, newVersion);
     updateSettingsHtml(oldVersion, newVersion);
 
     console.log(`\n✅ Version successfully updated to ${newVersion}`);
     console.log(`\nNext steps:`);
     console.log(`  1. Review the changes with: git diff`);
-    console.log(`  2. Update CHANGELOG.md if needed`);
+    console.log(`  2. Edit CHANGELOG.md to add specific changes for v${newVersion}`);
     console.log(`  3. Commit the changes: git commit -am "Bump version to ${newVersion}"`);
     console.log(`  4. Tag the release: git tag v${newVersion}`);
     console.log(`  5. Push: git push && git push --tags\n`);
