@@ -48,4 +48,23 @@ export class GroqProvider {
     const data = await response.json();
     return data.choices[0]?.message?.content || '';
   }
+
+  async listModels(apiKey) {
+    const response = await fetch('https://api.groq.com/openai/v1/models', {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data.data
+      .filter((m) => m.active !== false)
+      .map((m) => ({ id: m.id, displayName: m.id }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+  }
 }
