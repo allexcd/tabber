@@ -44,4 +44,37 @@ export class ClaudeProvider {
     const data = await response.json();
     return data.content[0]?.text || '';
   }
+
+  async listModels(apiKey) {
+    const response = await fetch('https://api.anthropic.com/v1/models', {
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data.data
+      .map((m) => ({
+        id: m.id,
+        displayName: m.id
+          .replace('claude-', 'Claude ')
+          .replace(/-/g, ' ')
+          .replace(/\b\w/g, (l) => l.toUpperCase()),
+      }))
+      .sort((a, b) => {
+        const aFamily = a.id.split('-')[1];
+        const bFamily = b.id.split('-')[1];
+        if (aFamily !== bFamily) {
+          return bFamily.localeCompare(aFamily);
+        }
+        return b.id.localeCompare(a.id);
+      });
+  }
 }

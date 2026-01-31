@@ -50,4 +50,25 @@ export class GeminiProvider {
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     return content;
   }
+
+  async listModels(apiKey) {
+    const response = await fetch(`${this.baseUrl}?key=${apiKey}`);
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data.models
+      .filter(
+        (m) =>
+          m.name.includes('gemini') && m.supportedGenerationMethods?.includes('generateContent')
+      )
+      .map((m) => ({
+        id: m.name.replace('models/', ''),
+        displayName: m.displayName || m.name.replace('models/', ''),
+      }))
+      .sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }
 }

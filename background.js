@@ -242,6 +242,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
   }
+
+  if (message.action === 'fetchModels') {
+    aiService
+      .listModels(message.provider, message.apiKey)
+      .then((models) => sendResponse({ success: true, models }))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
 });
 
 // Initialize on install

@@ -48,4 +48,36 @@ export class OpenAIProvider {
     const data = await response.json();
     return data.choices[0]?.message?.content || '';
   }
+
+  async listModels(apiKey) {
+    const response = await fetch('https://api.openai.com/v1/models', {
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+
+    return data.data
+      .filter(
+        (m) =>
+          m.id.includes('gpt') ||
+          m.id.startsWith('o1') ||
+          m.id.startsWith('o3') ||
+          m.id.includes('chatgpt')
+      )
+      .map((m) => ({ id: m.id, displayName: m.id }))
+      .sort((a, b) => {
+        const aScore =
+          a.id.includes('gpt-4') || a.id.includes('gpt-5') || a.id.startsWith('o') ? 0 : 1;
+        const bScore =
+          b.id.includes('gpt-4') || b.id.includes('gpt-5') || b.id.startsWith('o') ? 0 : 1;
+        if (aScore !== bScore) return aScore - bScore;
+        return b.id.localeCompare(a.id);
+      });
+  }
 }

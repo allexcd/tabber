@@ -5,6 +5,12 @@
   "description": "Automatically organize Chrome tabs using AI - supports OpenAI, Claude, Groq, Gemini & Local LLMs with smart grouping",
   "homepage_url": "https://github.com/allexcd/tabber",
   "permissions": ["tabs", "tabGroups", "storage"],
+  "host_permissions": [
+    "https://api.openai.com/*",
+    "https://api.anthropic.com/*",
+    "https://api.groq.com/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
   "background": {
     "service_worker": "background.js",
     "type": "module"

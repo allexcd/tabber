@@ -103,6 +103,18 @@ Do not include any explanation, just the JSON.`;
     return { groupName: 'Misc', color: 'grey' };
   }
 
+  // Fetch available models for a provider
+  async listModels(providerName, apiKey) {
+    const provider = this.providers[providerName];
+    if (!provider) {
+      throw new Error(`Unknown provider: ${providerName}`);
+    }
+    if (!provider.listModels) {
+      throw new Error(`Provider ${providerName} does not support model listing`);
+    }
+    return provider.listModels(apiKey);
+  }
+
   // Test the connection to the current provider
   async testConnection() {
     const provider = await this.getProvider();
