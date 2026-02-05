@@ -39,6 +39,27 @@ jobs:
             didn't match the configured pattern. Please ensure that the subject
             starts with an uppercase character (or "bump" for Dependabot).
 
+  changeset-check:
+    name: Changeset Required
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Check for changeset
+        env:
+          CHANGESET_BRANCH: ${{ github.head_ref }}
+        run: node scripts/verify-changeset.js
+
   quality-checks:
     name: Code Quality
     runs-on: ubuntu-latest

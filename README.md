@@ -172,6 +172,16 @@ fix: Resolve tab grouping race condition
 docs: Update installation instructions
 ```
 
+### Changesets
+
+Every feature branch requires a changeset before pushing. A changeset documents what changed and why.
+
+```bash
+npm run changeset          # Interactive prompt for type + description
+```
+
+This generates a `.changeset/<timestamp>-<slug>.md` file, stages it, and commits it. The pre-push hook blocks pushes without a changeset. To skip in exceptional cases: `git push --no-verify`.
+
 ## Contributing
 
 1. Fork and clone the repository
@@ -179,7 +189,8 @@ docs: Update installation instructions
 3. Make changes following code standards
 4. Run `npm run check` before committing
 5. Follow Conventional Commits format
-6. Create PR with descriptive title
+6. Run `npm run changeset` to document your changes
+7. Create PR with descriptive title
 
 ## License
 
