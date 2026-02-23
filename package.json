@@ -22,13 +22,13 @@
     "changeset": "node scripts/changeset.js"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.4.1",
+    "@commitlint/cli": "^20.4.2",
     "@commitlint/config-conventional": "^20.4.2",
     "eslint": "^8.57.1",
     "husky": "^9.0.11",
     "lint-staged": "^15.2.0",
     "prettier": "^3.4.2",
-    "stylelint": "^17.1.1",
+    "stylelint": "^17.3.0",
     "stylelint-config-standard": "^40.0.0"
   },
   "lint-staged": {
