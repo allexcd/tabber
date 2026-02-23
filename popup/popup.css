@@ -144,3 +144,11 @@ header h1 {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.btn.full-width.warning {
+  background: linear-gradient(90deg, #d97706, #f59e0b);
+}
+
+.btn.full-width.warning:hover {
+  opacity: 0.9;
+}

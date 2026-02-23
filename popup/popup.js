@@ -42,6 +42,7 @@ async function loadStatus() {
     const toggleText = document.getElementById('toggle-text');
     const reprocessBtn = document.getElementById('reprocess-btn');
     const groupAllBtn = document.getElementById('group-all-btn');
+    const ungroupAllBtn = document.getElementById('ungroup-all-btn');
 
     if (!response.isConfigured) {
       indicator.className = 'status-indicator unconfigured';
@@ -54,6 +55,8 @@ async function loadStatus() {
       reprocessBtn.style.opacity = '0.5';
       groupAllBtn.disabled = true;
       groupAllBtn.style.opacity = '0.5';
+      ungroupAllBtn.disabled = false;
+      ungroupAllBtn.style.opacity = '1';
     } else if (response.enabled) {
       indicator.className = 'status-indicator active';
       statusLabel.textContent = 'Active';
@@ -66,6 +69,8 @@ async function loadStatus() {
       reprocessBtn.style.opacity = '1';
       groupAllBtn.disabled = false;
       groupAllBtn.style.opacity = '1';
+      ungroupAllBtn.disabled = false;
+      ungroupAllBtn.style.opacity = '1';
     } else {
       indicator.className = 'status-indicator inactive';
       statusLabel.textContent = 'Disabled';
@@ -78,6 +83,8 @@ async function loadStatus() {
       reprocessBtn.style.opacity = '0.5';
       groupAllBtn.disabled = true;
       groupAllBtn.style.opacity = '0.5';
+      ungroupAllBtn.disabled = false;
+      ungroupAllBtn.style.opacity = '1';
     }
   } catch (error) {
     logger.error('Failed to get status from background:', error);
@@ -107,6 +114,7 @@ async function loadStatusFallback() {
   const toggleText = document.getElementById('toggle-text');
   const reprocessBtn = document.getElementById('reprocess-btn');
   const groupAllBtn = document.getElementById('group-all-btn');
+  const ungroupAllBtn = document.getElementById('ungroup-all-btn');
 
   const isConfigured = checkConfiguration(settings);
 
@@ -123,6 +131,8 @@ async function loadStatusFallback() {
     reprocessBtn.style.opacity = '0.5';
     groupAllBtn.disabled = true;
     groupAllBtn.style.opacity = '0.5';
+    ungroupAllBtn.disabled = false;
+    ungroupAllBtn.style.opacity = '1';
   } else if (settings.enabled) {
     indicator.className = 'status-indicator active';
     statusLabel.textContent = 'Active';
@@ -135,6 +145,8 @@ async function loadStatusFallback() {
     reprocessBtn.style.opacity = '1';
     groupAllBtn.disabled = false;
     groupAllBtn.style.opacity = '1';
+    ungroupAllBtn.disabled = false;
+    ungroupAllBtn.style.opacity = '1';
   } else {
     indicator.className = 'status-indicator inactive';
     statusLabel.textContent = 'Disabled';
@@ -147,6 +159,8 @@ async function loadStatusFallback() {
     reprocessBtn.style.opacity = '0.5';
     groupAllBtn.disabled = true;
     groupAllBtn.style.opacity = '0.5';
+    ungroupAllBtn.disabled = false;
+    ungroupAllBtn.style.opacity = '1';
   }
 }
 
@@ -212,6 +226,30 @@ function setupEventListeners() {
   // Settings button
   document.getElementById('settings-btn').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
+  });
+
+  // Ungroup all tabs button
+  document.getElementById('ungroup-all-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('ungroup-all-btn');
+    const originalText = btn.textContent;
+    btn.textContent = '⏳ Ungrouping...';
+    btn.disabled = true;
+
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'ungroupAllTabs' });
+      if (response.success) {
+        btn.textContent = response.count > 0 ? `✓ Ungrouped ${response.count} tabs!` : '✓ No groups found';
+      } else {
+        btn.textContent = `✗ ${response.error || 'Failed'}`;
+      }
+    } catch (error) {
+      btn.textContent = '✗ Error';
+    }
+
+    setTimeout(() => {
+      btn.textContent = originalText;
+      btn.disabled = false;
+    }, 2500);
   });
 
   // Group all tabs button

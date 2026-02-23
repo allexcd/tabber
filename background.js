@@ -243,6 +243,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === 'ungroupAllTabs') {
+    ungroupAllTabs()
+      .then((result) => sendResponse(result))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
   if (message.action === 'fetchModels') {
     aiService
       .listModels(message.provider, message.apiKey)
@@ -317,6 +324,21 @@ async function groupAllTabs() {
   }
 
   return { success: true, count: groupedCount };
+}
+
+// Ungroup all tabs in the current window
+async function ungroupAllTabs() {
+  const tabs = await chrome.tabs.query({ currentWindow: true });
+  const groupedTabs = tabs.filter((tab) => tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE);
+
+  if (groupedTabs.length === 0) {
+    return { success: true, count: 0 };
+  }
+
+  const tabIds = groupedTabs.map((tab) => tab.id);
+  await chrome.tabs.ungroup(tabIds);
+
+  return { success: true, count: groupedTabs.length };
 }
 
 // Test connection with provided configuration (used by settings page)
