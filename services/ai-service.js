@@ -39,18 +39,31 @@ export class AIService {
     // Sanitize tab data before sending to AI
     const sanitizedData = this.sanitizer.sanitizeTabData(title, url);
 
-    const prompt = this.buildPrompt(sanitizedData.title, sanitizedData.url, existingGroups);
+    // Load custom instructions
+    const settings = await secureStorage.get(['customInstructions']);
+    const customInstructions = settings.customInstructions || '';
+
+    const prompt = this.buildPrompt(
+      sanitizedData.title,
+      sanitizedData.url,
+      existingGroups,
+      customInstructions
+    );
     const response = await provider.complete(prompt);
 
     return this.parseResponse(response);
   }
 
   // Build the prompt for the AI
-  buildPrompt(title, url, existingGroups) {
+  buildPrompt(title, url, existingGroups, customInstructions = '') {
     const groupList =
       existingGroups.length > 0
         ? existingGroups.map((g) => `- "${g.title}" (${g.color})`).join('\n')
         : 'No existing groups';
+
+    const userInstructionsSection = customInstructions.trim()
+      ? `\nUSER INSTRUCTIONS (follow these carefully):\n${customInstructions.trim()}\n`
+      : '';
 
     return `You are a tab organization assistant. Analyze the following browser tab and decide how to group it.
 
@@ -76,7 +89,7 @@ INSTRUCTIONS:
    - cyan: News, articles, reading
    - orange: Work, business, professional
    - grey: Utilities, settings, misc
-
+${userInstructionsSection}
 Respond ONLY with valid JSON in this exact format:
 {"groupName": "Group Name", "color": "colorname"}
 

@@ -691,3 +691,27 @@ footer {
     flex-direction: column;
   }
 }
+
+/* AI Instructions */
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: rgb(0, 0, 0, 0.3);
+  border: 1px solid rgb(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #f4f4f5;
+  font-size: 0.85rem;
+  font-family: inherit;
+  resize: vertical;
+  transition: border-color 0.2s;
+  line-height: 1.5;
+}
+
+.form-group textarea:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.form-group textarea::placeholder {
+  color: #52525b;
+}

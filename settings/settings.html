@@ -46,6 +46,29 @@
             </div>
           </section>
 
+          <!-- AI Instructions -->
+          <section class="card" id="ai-instructions-section">
+            <h2>AI Instructions</h2>
+            <p class="description">
+              Customize how the AI groups your tabs. Write natural-language instructions that will
+              be included in every grouping request.
+            </p>
+            <div class="form-group">
+              <label for="custom-instructions">Custom Instructions</label>
+              <textarea
+                id="custom-instructions"
+                rows="5"
+                placeholder="Examples:&#10;- Always group cooking and recipe tabs under 'Food'&#10;- Never create a group called Misc, use 'Other' instead&#10;- Keep work-related tabs in 'Work' even on weekends"
+              ></textarea>
+            </div>
+            <div class="form-actions">
+              <button type="button" class="btn primary" id="save-instructions-btn">
+                Save Instructions
+              </button>
+              <div class="status hidden" id="instructions-status"></div>
+            </div>
+          </section>
+
           <!-- Provider Selection -->
           <section class="card">
             <h2>AI Provider</h2>

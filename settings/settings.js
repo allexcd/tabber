@@ -59,6 +59,7 @@ async function loadSettings() {
     'groqModel',
     'geminiKey',
     'geminiModel',
+    'customInstructions',
   ]);
 
   // Set enabled toggle
@@ -124,6 +125,9 @@ async function loadSettings() {
   } else {
     geminiSelect.value = geminiModel;
   }
+
+  // Set custom instructions
+  document.getElementById('custom-instructions').value = settings.customInstructions || '';
 
   // Update default provider UI - pass actual saved default, not the fallback
   updateDefaultProviderUI(settings.defaultProvider);
@@ -247,6 +251,9 @@ function setupEventListeners() {
       }
     }
   });
+
+  // AI Instructions
+  document.getElementById('save-instructions-btn').addEventListener('click', saveInstructions);
 }
 
 // Show the settings section for the selected provider
@@ -602,5 +609,28 @@ function updateEnabledToggleState(defaultProvider) {
     switchElement.style.opacity = '1';
     switchElement.style.cursor = 'pointer';
     warningMessage.classList.add('hidden');
+  }
+}
+
+// Save custom AI instructions
+async function saveInstructions() {
+  const instructions = document.getElementById('custom-instructions').value;
+
+  try {
+    await secureStorage.set({ customInstructions: instructions });
+    logger.log('Custom instructions saved');
+
+    const status = document.getElementById('instructions-status');
+    status.textContent = '✓ Instructions saved!';
+    status.className = 'status success';
+
+    setTimeout(() => {
+      status.classList.add('hidden');
+    }, 3000);
+  } catch (error) {
+    logger.error('Failed to save instructions:', error);
+    const status = document.getElementById('instructions-status');
+    status.textContent = `✗ Save failed: ${error.message}`;
+    status.className = 'status error';
   }
 }
