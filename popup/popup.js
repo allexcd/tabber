@@ -238,7 +238,8 @@ function setupEventListeners() {
     try {
       const response = await chrome.runtime.sendMessage({ action: 'ungroupAllTabs' });
       if (response.success) {
-        btn.textContent = response.count > 0 ? `✓ Ungrouped ${response.count} tabs!` : '✓ No groups found';
+        btn.textContent =
+          response.count > 0 ? `✓ Ungrouped ${response.count} tabs!` : '✓ No groups found';
       } else {
         btn.textContent = `✗ ${response.error || 'Failed'}`;
       }
