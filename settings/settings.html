@@ -113,6 +113,46 @@
         <!-- Right Column: Provider Settings -->
         <div class="right-column">
           <div class="provider-settings-container">
+            <!-- Custom Rules Section -->
+            <section class="card" id="rules-section">
+              <h2>Custom Rules</h2>
+              <p class="description">
+                Define rules to group tabs automatically — no AI call needed. Rules are checked
+                first, in order.
+              </p>
+
+              <!-- Add Rule Form -->
+              <div class="rules-form">
+                <div class="rules-form-row">
+                  <select id="rule-match-type">
+                    <option value="domain">Domain</option>
+                    <option value="urlContains">URL contains</option>
+                    <option value="titleContains">Title contains</option>
+                  </select>
+                  <input type="text" id="rule-match-value" placeholder="e.g. github.com" />
+                  <span class="rules-arrow">→</span>
+                  <input type="text" id="rule-group-name" placeholder="Group name" />
+                  <select id="rule-color">
+                    <option value="blue">🔵 Blue</option>
+                    <option value="red">🔴 Red</option>
+                    <option value="yellow">🟡 Yellow</option>
+                    <option value="green">🟢 Green</option>
+                    <option value="pink">🩷 Pink</option>
+                    <option value="purple">🟣 Purple</option>
+                    <option value="cyan">🩵 Cyan</option>
+                    <option value="orange">🟠 Orange</option>
+                    <option value="grey">⚫ Grey</option>
+                  </select>
+                  <button type="button" class="btn primary" id="add-rule-btn">Add</button>
+                </div>
+              </div>
+
+              <!-- Rules List -->
+              <div id="rules-list" class="rules-list">
+                <p class="rules-empty hidden" id="rules-empty">No rules yet. Add one above.</p>
+              </div>
+            </section>
+
             <!-- Claude/Anthropic Settings -->
             <section class="card provider-settings" id="claude-settings">
               <h2>Claude Configuration</h2>

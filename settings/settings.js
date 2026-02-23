@@ -3,6 +3,7 @@
 
 import { secureStorage } from '../services/secure-storage.js';
 import { logger } from '../services/logger.js';
+import { rulesService } from '../services/rules-service.js';
 import {
   loadCachedModels,
   isCustomModel,
@@ -128,6 +129,8 @@ async function loadSettings() {
   // Update default provider UI - pass actual saved default, not the fallback
   updateDefaultProviderUI(settings.defaultProvider);
 
+  await loadRules();
+
   logger.log('loadSettings - defaultProvider:', settings.defaultProvider);
 
   // Update enabled toggle state based on default provider
@@ -232,6 +235,9 @@ function setupEventListeners() {
   document
     .getElementById('local-model')
     .addEventListener('input', () => updateDefaultButtonState('local'));
+
+  // Custom rules
+  document.getElementById('add-rule-btn').addEventListener('click', addRule);
 
   // Listen for storage changes to sync with popup
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -602,5 +608,105 @@ function updateEnabledToggleState(defaultProvider) {
     switchElement.style.opacity = '1';
     switchElement.style.cursor = 'pointer';
     warningMessage.classList.add('hidden');
+  }
+}
+
+// Load and render the custom rules list
+async function loadRules() {
+  const rules = await rulesService.getRules();
+  renderRules(rules);
+}
+
+// Render the rules list in the UI
+function renderRules(rules) {
+  const list = document.getElementById('rules-list');
+  const empty = document.getElementById('rules-empty');
+
+  // Remove existing rule rows (keep the empty message)
+  list.querySelectorAll('.rule-row').forEach((el) => el.remove());
+
+  if (rules.length === 0) {
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  empty.classList.add('hidden');
+
+  for (const rule of rules) {
+    const row = document.createElement('div');
+    row.className = 'rule-row';
+    row.dataset.id = rule.id;
+
+    const matchLabel =
+      { domain: 'Domain', urlContains: 'URL contains', titleContains: 'Title contains' }[
+        rule.matchType
+      ] || rule.matchType;
+
+    row.innerHTML = `
+      <span class="rule-match-type">${matchLabel}</span>
+      <span class="rule-match-value">${escapeHtml(rule.matchValue)}</span>
+      <span class="rules-arrow">→</span>
+      <span class="rule-group">${escapeHtml(rule.groupName)}</span>
+      <span class="rule-color-badge rule-color-${rule.color}">${rule.color}</span>
+      <button type="button" class="btn rule-delete-btn" data-id="${rule.id}" aria-label="Delete rule">✕</button>
+    `;
+
+    row.querySelector('.rule-delete-btn').addEventListener('click', async (e) => {
+      const id = e.currentTarget.dataset.id;
+      await rulesService.deleteRule(id);
+      await loadRules();
+    });
+
+    list.appendChild(row);
+  }
+}
+
+// Add a new rule from the form inputs
+async function addRule() {
+  const matchType = document.getElementById('rule-match-type').value;
+  const matchValue = document.getElementById('rule-match-value').value.trim();
+  const groupName = document.getElementById('rule-group-name').value.trim();
+  const color = document.getElementById('rule-color').value;
+
+  if (!matchValue || !groupName) {
+    showRulesStatus('Please fill in the match value and group name', 'error');
+    return;
+  }
+
+  await rulesService.addRule({ matchType, matchValue, groupName, color });
+
+  // Reset form
+  document.getElementById('rule-match-value').value = '';
+  document.getElementById('rule-group-name').value = '';
+
+  await loadRules();
+  showRulesStatus('✓ Rule added', 'success');
+}
+
+// Escape HTML for safe rendering
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+// Show status in rules section
+function showRulesStatus(message, type) {
+  const section = document.getElementById('rules-section');
+  let statusEl = section.querySelector('.rules-status');
+  if (!statusEl) {
+    statusEl = document.createElement('div');
+    statusEl.className = 'rules-status status';
+    section.appendChild(statusEl);
+  }
+  statusEl.textContent = message;
+  statusEl.className = `rules-status status ${type}`;
+
+  if (type === 'success') {
+    setTimeout(() => {
+      statusEl.classList.add('hidden');
+    }, 3000);
   }
 }

@@ -3,6 +3,7 @@
 import { AIService } from './services/ai-service.js';
 import { secureStorage } from './services/secure-storage.js';
 import { logger } from './services/logger.js';
+import { rulesService } from './services/rules-service.js';
 
 const aiService = new AIService();
 
@@ -65,6 +66,18 @@ async function processTab(tabId, tab, force = false) {
 
     // Get existing groups in this window
     const existingGroups = await getExistingGroups(tab.windowId);
+
+    // Check custom rules first (no API call needed)
+    const ruleMatch = await rulesService.matchTab(tab.title, tab.url);
+    if (ruleMatch) {
+      await executeGrouping(
+        tabId,
+        tab.windowId,
+        { groupName: ruleMatch.groupName, color: ruleMatch.color },
+        existingGroups
+      );
+      return;
+    }
 
     // Ask AI for grouping decision
     const decision = await aiService.getGroupingDecision(tab.title, tab.url, existingGroups);

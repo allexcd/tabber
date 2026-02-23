@@ -691,3 +691,158 @@ footer {
     flex-direction: column;
   }
 }
+
+/* Custom Rules */
+#rules-section {
+  margin-bottom: 1.5rem;
+}
+
+.rules-form {
+  margin-bottom: 1rem;
+}
+
+.rules-form-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.rules-form-row select,
+.rules-form-row input[type='text'] {
+  flex: 1;
+  min-width: 120px;
+  padding: 0.6rem 0.75rem;
+  background: rgb(0, 0, 0, 0.3);
+  border: 1px solid rgb(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #f4f4f5;
+  font-size: 0.85rem;
+}
+
+.rules-form-row select:focus,
+.rules-form-row input[type='text']:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.rules-arrow {
+  color: #a1a1aa;
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+.rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.rules-empty {
+  color: #71717a;
+  font-size: 0.85rem;
+  text-align: center;
+  padding: 1rem 0;
+}
+
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.75rem;
+  background: rgb(255, 255, 255, 0.04);
+  border: 1px solid rgb(255, 255, 255, 0.08);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.rule-match-type {
+  color: #a1a1aa;
+  font-size: 0.75rem;
+  background: rgb(255, 255, 255, 0.08);
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.rule-match-value {
+  color: #e4e4e7;
+  font-family: monospace;
+  flex: 1;
+  min-width: 80px;
+}
+
+.rule-group {
+  color: #60a5fa;
+  font-weight: 500;
+}
+
+.rule-color-badge {
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+.rule-color-blue {
+  background: rgb(59, 130, 246, 0.2);
+  color: #60a5fa;
+}
+
+.rule-color-red {
+  background: rgb(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.rule-color-yellow {
+  background: rgb(234, 179, 8, 0.2);
+  color: #facc15;
+}
+
+.rule-color-green {
+  background: rgb(34, 197, 94, 0.2);
+  color: #4ade80;
+}
+
+.rule-color-pink {
+  background: rgb(236, 72, 153, 0.2);
+  color: #f472b6;
+}
+
+.rule-color-purple {
+  background: rgb(168, 85, 247, 0.2);
+  color: #c084fc;
+}
+
+.rule-color-cyan {
+  background: rgb(6, 182, 212, 0.2);
+  color: #22d3ee;
+}
+
+.rule-color-orange {
+  background: rgb(249, 115, 22, 0.2);
+  color: #fb923c;
+}
+
+.rule-color-grey {
+  background: rgb(113, 113, 122, 0.2);
+  color: #a1a1aa;
+}
+
+.rule-delete-btn {
+  background: transparent;
+  border: 1px solid rgb(239, 68, 68, 0.3);
+  color: #f87171;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.rule-delete-btn:hover {
+  background: rgb(239, 68, 68, 0.15);
+}
