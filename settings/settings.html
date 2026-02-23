@@ -108,6 +108,23 @@
               </label>
             </div>
           </section>
+          <!-- Backup & Restore -->
+          <section class="card" id="backup-section">
+            <h2>Backup & Restore</h2>
+            <p class="description">
+              Export or import your settings (API keys are not included for security)
+            </p>
+            <div class="form-actions backup-actions">
+              <button type="button" class="btn secondary" id="export-settings-btn">
+                ⬇️ Export Settings
+              </button>
+              <button type="button" class="btn secondary" id="import-settings-btn">
+                ⬆️ Import Settings
+              </button>
+              <input type="file" id="import-file-input" accept=".json" style="display: none" />
+            </div>
+            <div class="status hidden" id="backup-status"></div>
+          </section>
         </div>
 
         <!-- Right Column: Provider Settings -->

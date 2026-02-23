@@ -247,6 +247,13 @@ function setupEventListeners() {
       }
     }
   });
+
+  // Backup & Restore
+  document.getElementById('export-settings-btn').addEventListener('click', exportSettings);
+  document.getElementById('import-settings-btn').addEventListener('click', () => {
+    document.getElementById('import-file-input').click();
+  });
+  document.getElementById('import-file-input').addEventListener('change', importSettings);
 }
 
 // Show the settings section for the selected provider
@@ -602,5 +609,102 @@ function updateEnabledToggleState(defaultProvider) {
     switchElement.style.opacity = '1';
     switchElement.style.cursor = 'pointer';
     warningMessage.classList.add('hidden');
+  }
+}
+
+// Export settings to a JSON file (API keys excluded for security)
+async function exportSettings() {
+  try {
+    const settings = await secureStorage.get([
+      'enabled',
+      'defaultProvider',
+      'openaiModel',
+      'claudeModel',
+      'localUrl',
+      'localModel',
+      'localApiFormat',
+      'groqModel',
+      'geminiModel',
+    ]);
+
+    const exportData = {
+      version: '1.0',
+      exportedAt: new Date().toISOString(),
+      note: 'API keys are not included. Re-enter them after importing.',
+      settings,
+    };
+
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `tabber-settings-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+
+    showBackupStatus('✓ Settings exported successfully!', 'success');
+  } catch (error) {
+    logger.error('Export failed:', error);
+    showBackupStatus(`✗ Export failed: ${error.message}`, 'error');
+  }
+}
+
+// Import settings from a JSON file
+async function importSettings(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  // Reset file input so same file can be re-imported
+  e.target.value = '';
+
+  try {
+    const text = await file.text();
+    const importData = JSON.parse(text);
+
+    if (!importData.settings || typeof importData.settings !== 'object') {
+      showBackupStatus('✗ Invalid settings file format', 'error');
+      return;
+    }
+
+    // Only import known safe (non-sensitive) keys
+    const allowedKeys = [
+      'enabled',
+      'defaultProvider',
+      'openaiModel',
+      'claudeModel',
+      'localUrl',
+      'localModel',
+      'localApiFormat',
+      'groqModel',
+      'geminiModel',
+    ];
+
+    const safeSettings = {};
+    for (const key of allowedKeys) {
+      if (Object.hasOwn(importData.settings, key)) {
+        safeSettings[key] = importData.settings[key];
+      }
+    }
+
+    await secureStorage.set(safeSettings);
+    await loadSettings();
+
+    showBackupStatus('✓ Settings imported! Re-enter your API keys.', 'success');
+  } catch (error) {
+    logger.error('Import failed:', error);
+    showBackupStatus(`✗ Import failed: ${error.message}`, 'error');
+  }
+}
+
+// Show status message in the backup section
+function showBackupStatus(message, type) {
+  const status = document.getElementById('backup-status');
+  status.textContent = message;
+  status.className = `status ${type}`;
+
+  if (type === 'success') {
+    setTimeout(() => {
+      status.classList.add('hidden');
+    }, 4000);
   }
 }
