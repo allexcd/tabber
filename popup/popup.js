@@ -2,10 +2,12 @@
 
 import { secureStorage } from '../services/secure-storage.js';
 import { logger } from '../services/logger.js';
+import { detectBrowserInfo } from '../services/browser-info.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   loadStatus();
   setupEventListeners();
+  setupFastTooltips();
 
   // Listen for storage changes to sync with settings page
   chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -19,6 +21,17 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 });
+
+function setGroupAllButtonState(button, { enabled, busy }) {
+  if (!button) {
+    return;
+  }
+
+  const isEnabled = Boolean(enabled) && !busy;
+  button.disabled = !isEnabled;
+  button.style.opacity = isEnabled ? '1' : '0.5';
+  button.textContent = busy ? '⏳ Grouping tabs...' : '🧠 Group All Tabs';
+}
 
 // Load current status
 async function loadStatus() {
@@ -40,8 +53,10 @@ async function loadStatus() {
     const providerLabel = document.getElementById('provider-label');
     const toggleBtn = document.getElementById('toggle-btn');
     const toggleText = document.getElementById('toggle-text');
-    const reprocessBtn = document.getElementById('reprocess-btn');
     const groupAllBtn = document.getElementById('group-all-btn');
+    const isGroupingInProgress = Boolean(response.isGroupingInProgress);
+
+    renderBrowserMitigationWarning(resolveBrowserInfo(response.browserInfo));
 
     if (!response.isConfigured) {
       indicator.className = 'status-indicator unconfigured';
@@ -50,10 +65,7 @@ async function loadStatus() {
       toggleText.textContent = 'Enable';
       toggleBtn.disabled = true;
       toggleBtn.style.opacity = '0.5';
-      reprocessBtn.disabled = true;
-      reprocessBtn.style.opacity = '0.5';
-      groupAllBtn.disabled = true;
-      groupAllBtn.style.opacity = '0.5';
+      setGroupAllButtonState(groupAllBtn, { enabled: false, busy: isGroupingInProgress });
     } else if (response.enabled) {
       indicator.className = 'status-indicator active';
       statusLabel.textContent = 'Active';
@@ -62,10 +74,7 @@ async function loadStatus() {
       toggleBtn.classList.add('danger');
       toggleBtn.disabled = false;
       toggleBtn.style.opacity = '1';
-      reprocessBtn.disabled = false;
-      reprocessBtn.style.opacity = '1';
-      groupAllBtn.disabled = false;
-      groupAllBtn.style.opacity = '1';
+      setGroupAllButtonState(groupAllBtn, { enabled: true, busy: isGroupingInProgress });
     } else {
       indicator.className = 'status-indicator inactive';
       statusLabel.textContent = 'Disabled';
@@ -74,10 +83,7 @@ async function loadStatus() {
       toggleBtn.classList.remove('danger');
       toggleBtn.disabled = false;
       toggleBtn.style.opacity = '1';
-      reprocessBtn.disabled = true;
-      reprocessBtn.style.opacity = '0.5';
-      groupAllBtn.disabled = true;
-      groupAllBtn.style.opacity = '0.5';
+      setGroupAllButtonState(groupAllBtn, { enabled: false, busy: isGroupingInProgress });
     }
   } catch (error) {
     logger.error('Failed to get status from background:', error);
@@ -105,8 +111,11 @@ async function loadStatusFallback() {
   const providerLabel = document.getElementById('provider-label');
   const toggleBtn = document.getElementById('toggle-btn');
   const toggleText = document.getElementById('toggle-text');
-  const reprocessBtn = document.getElementById('reprocess-btn');
   const groupAllBtn = document.getElementById('group-all-btn');
+  const executionState = await getExecutionStateFromBackground();
+  const isGroupingInProgress = Boolean(executionState?.isGroupingInProgress);
+
+  renderBrowserMitigationWarning(resolveBrowserInfo(await getBrowserInfoFromBackground()));
 
   const isConfigured = checkConfiguration(settings);
 
@@ -119,10 +128,7 @@ async function loadStatusFallback() {
     toggleText.textContent = 'Enable';
     toggleBtn.disabled = true;
     toggleBtn.style.opacity = '0.5';
-    reprocessBtn.disabled = true;
-    reprocessBtn.style.opacity = '0.5';
-    groupAllBtn.disabled = true;
-    groupAllBtn.style.opacity = '0.5';
+    setGroupAllButtonState(groupAllBtn, { enabled: false, busy: isGroupingInProgress });
   } else if (settings.enabled) {
     indicator.className = 'status-indicator active';
     statusLabel.textContent = 'Active';
@@ -131,10 +137,7 @@ async function loadStatusFallback() {
     toggleBtn.classList.add('danger');
     toggleBtn.disabled = false;
     toggleBtn.style.opacity = '1';
-    reprocessBtn.disabled = false;
-    reprocessBtn.style.opacity = '1';
-    groupAllBtn.disabled = false;
-    groupAllBtn.style.opacity = '1';
+    setGroupAllButtonState(groupAllBtn, { enabled: true, busy: isGroupingInProgress });
   } else {
     indicator.className = 'status-indicator inactive';
     statusLabel.textContent = 'Disabled';
@@ -143,10 +146,7 @@ async function loadStatusFallback() {
     toggleBtn.classList.remove('danger');
     toggleBtn.disabled = false;
     toggleBtn.style.opacity = '1';
-    reprocessBtn.disabled = true;
-    reprocessBtn.style.opacity = '0.5';
-    groupAllBtn.disabled = true;
-    groupAllBtn.style.opacity = '0.5';
+    setGroupAllButtonState(groupAllBtn, { enabled: false, busy: isGroupingInProgress });
   }
 }
 
@@ -164,6 +164,63 @@ function checkConfiguration(settings) {
   if (provider === 'local' && settings.localUrl && settings.localModel) return true;
 
   return false;
+}
+
+async function getBrowserInfoFromBackground() {
+  try {
+    return await chrome.runtime.sendMessage({ action: 'getBrowserInfo' });
+  } catch (error) {
+    logger.debug('Failed to fetch browser info from background', error);
+    return null;
+  }
+}
+
+async function getExecutionStateFromBackground() {
+  try {
+    return await chrome.runtime.sendMessage({ action: 'getExecutionState' });
+  } catch (error) {
+    logger.debug('Failed to fetch execution state from background', error);
+    return null;
+  }
+}
+
+function renderBrowserMitigationWarning(browserInfo) {
+  const warningEl = document.getElementById('browser-warning');
+  if (!warningEl) {
+    return;
+  }
+
+  if (!browserInfo?.isAffectedTabGroupLabelBug) {
+    warningEl.textContent = '';
+    warningEl.classList.add('hidden');
+    return;
+  }
+
+  const browserName = browserInfo.browserName || 'This browser';
+  const chromiumMajor = browserInfo.chromiumMajor || 'unknown';
+  const fixedVersionLabel = browserInfo.fixedVersionLabel || 'Chromium 146+';
+
+  warningEl.textContent = `${browserName} (Chromium ${chromiumMajor}) has a known tab-group label render bug. Update to ${fixedVersionLabel} for the permanent fix.`;
+  warningEl.classList.remove('hidden');
+}
+
+function resolveBrowserInfo(backgroundInfo) {
+  const localInfo = detectBrowserInfo();
+  if (!backgroundInfo) {
+    return localInfo;
+  }
+
+  // Use local detection as baseline (popup context), but don't lose background-specific metadata.
+  const merged = { ...localInfo, ...backgroundInfo };
+
+  if (localInfo.isAffectedTabGroupLabelBug) {
+    merged.isAffectedTabGroupLabelBug = true;
+    merged.chromiumMajor = localInfo.chromiumMajor;
+    merged.browserName = localInfo.browserName || merged.browserName;
+    merged.browserVersion = localInfo.browserVersion || merged.browserVersion;
+  }
+
+  return merged;
 }
 
 // Get human-readable provider name
@@ -187,28 +244,6 @@ function setupEventListeners() {
     loadStatus();
   });
 
-  // Reprocess button
-  document.getElementById('reprocess-btn').addEventListener('click', async () => {
-    const btn = document.getElementById('reprocess-btn');
-    btn.textContent = 'Processing...';
-    btn.disabled = true;
-
-    try {
-      await chrome.runtime.sendMessage({ action: 'reprocessTab' });
-      btn.textContent = 'Done!';
-      setTimeout(() => {
-        btn.textContent = 'Regroup Tabs';
-        btn.disabled = false;
-      }, 1500);
-    } catch (error) {
-      btn.textContent = 'Error';
-      setTimeout(() => {
-        btn.textContent = 'Regroup Tabs';
-        btn.disabled = false;
-      }, 1500);
-    }
-  });
-
   // Settings button
   document.getElementById('settings-btn').addEventListener('click', () => {
     chrome.runtime.openOptionsPage();
@@ -217,24 +252,110 @@ function setupEventListeners() {
   // Group all tabs button
   document.getElementById('group-all-btn').addEventListener('click', async () => {
     const btn = document.getElementById('group-all-btn');
-    const originalText = btn.textContent;
-    btn.textContent = '⏳ Grouping tabs...';
-    btn.disabled = true;
+    if (btn.disabled) {
+      return;
+    }
+    setGroupAllButtonState(btn, { enabled: false, busy: true });
 
     try {
       const response = await chrome.runtime.sendMessage({ action: 'groupAllTabs' });
       if (response.success) {
-        btn.textContent = `✓ Grouped ${response.count} tabs!`;
+        btn.textContent = `✓ Grouped ${response.count} tabs`;
       } else {
         btn.textContent = `✗ ${response.error || 'Failed'}`;
       }
     } catch (error) {
       btn.textContent = '✗ Error';
     }
-
-    setTimeout(() => {
-      btn.textContent = originalText;
-      btn.disabled = false;
-    }, 2500);
+    await loadStatus();
   });
+}
+
+function setupFastTooltips() {
+  const tooltip = document.getElementById('fast-tooltip');
+  const targets = Array.from(document.querySelectorAll('[data-tooltip]'));
+  if (!tooltip || targets.length === 0) {
+    return;
+  }
+
+  let activeTarget = null;
+
+  const showTooltip = (target) => {
+    const message = target.getAttribute('data-tooltip');
+    if (!message) {
+      return;
+    }
+
+    activeTarget = target;
+    applyTooltipTheme(tooltip, target);
+    tooltip.textContent = message;
+    tooltip.classList.remove('hidden');
+    tooltip.setAttribute('aria-hidden', 'false');
+    positionTooltip(tooltip, target);
+  };
+
+  const hideTooltip = (target) => {
+    if (target && activeTarget && target !== activeTarget) {
+      return;
+    }
+
+    activeTarget = null;
+    tooltip.classList.add('hidden');
+    tooltip.setAttribute('aria-hidden', 'true');
+    tooltip.textContent = '';
+    tooltip.classList.remove('theme-group');
+  };
+
+  const refreshActiveTooltip = () => {
+    if (activeTarget && !tooltip.classList.contains('hidden')) {
+      positionTooltip(tooltip, activeTarget);
+    }
+  };
+
+  for (const target of targets) {
+    target.addEventListener('mouseenter', () => showTooltip(target));
+    target.addEventListener('mouseleave', () => hideTooltip(target));
+    target.addEventListener('focus', () => showTooltip(target));
+    target.addEventListener('blur', () => hideTooltip(target));
+  }
+
+  window.addEventListener('resize', refreshActiveTooltip);
+  window.addEventListener('scroll', refreshActiveTooltip, true);
+}
+
+function applyTooltipTheme(tooltip, target) {
+  tooltip.classList.remove('theme-group');
+  const theme = target.getAttribute('data-tooltip-theme');
+  if (!theme) {
+    return;
+  }
+
+  if (theme === 'group') {
+    tooltip.classList.add('theme-group');
+  }
+}
+
+function positionTooltip(tooltip, target) {
+  const targetRect = target.getBoundingClientRect();
+  const gap = 10;
+  const viewportPadding = 8;
+  const tooltipRect = tooltip.getBoundingClientRect();
+
+  let left = targetRect.left + targetRect.width / 2 - tooltipRect.width / 2;
+  const minLeft = viewportPadding;
+  const maxLeft = Math.max(
+    viewportPadding,
+    window.innerWidth - tooltipRect.width - viewportPadding
+  );
+  left = Math.min(Math.max(left, minLeft), maxLeft);
+
+  let top = targetRect.top - tooltipRect.height - gap;
+  top = Math.max(viewportPadding, top);
+
+  tooltip.style.left = `${Math.round(left)}px`;
+  tooltip.style.top = `${Math.round(top)}px`;
+
+  const arrowLeftRaw = targetRect.left + targetRect.width / 2 - left;
+  const arrowLeft = Math.min(Math.max(arrowLeftRaw, 10), tooltipRect.width - 10);
+  tooltip.style.setProperty('--tooltip-arrow-left', `${Math.round(arrowLeft)}px`);
 }

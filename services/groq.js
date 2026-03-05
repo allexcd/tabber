@@ -36,7 +36,7 @@ export class GroqProvider {
           },
         ],
         temperature: 0.3,
-        max_tokens: 100,
+        max_tokens: 512,
       }),
     });
 

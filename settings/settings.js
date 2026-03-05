@@ -17,6 +17,8 @@ import {
 } from './model-fetcher.js';
 import { setupChangelogModal } from './changelog.js';
 
+const GITHUB_ISSUES_URL = 'https://github.com/allexcd/tabber/issues/new/choose';
+
 logger.log('Settings module loaded');
 
 // Initialize on DOM load
@@ -159,6 +161,11 @@ function setupEventListeners() {
     radio.addEventListener('change', (e) => {
       showProviderSettings(e.target.value);
     });
+  });
+
+  // Report issue button
+  document.getElementById('report-issue-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: GITHUB_ISSUES_URL });
   });
 
   // OpenAI model selection - show/hide custom input
@@ -440,15 +447,6 @@ function showStatus(message, type) {
     status.textContent = message;
     status.className = `status ${type}`;
   });
-
-  // Auto-hide success messages
-  if (type === 'success') {
-    setTimeout(() => {
-      statusElements.forEach((status) => {
-        status.classList.add('hidden');
-      });
-    }, 3000);
-  }
 }
 
 // Make a provider the default

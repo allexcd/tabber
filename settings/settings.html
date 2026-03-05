@@ -11,18 +11,29 @@
       <header>
         <div class="header-row">
           <div>
-            <h1>🗂️ AI Tab Grouper</h1>
+            <h1>🗂️ AI Tab Grouper (Tabber)</h1>
             <p class="subtitle">Configure your AI provider to automatically organize tabs</p>
           </div>
-          <button
-            type="button"
-            class="icon-button"
-            id="changelog-info"
-            aria-label="View version history"
-            title="View version history"
-          >
-            ℹ️
-          </button>
+          <div class="header-actions">
+            <button
+              type="button"
+              class="header-action-btn"
+              id="report-issue-btn"
+              aria-label="Report an issue on GitHub"
+              title="Report an issue on GitHub"
+            >
+              🐛 Report Issue
+            </button>
+            <button
+              type="button"
+              class="icon-button"
+              id="changelog-info"
+              aria-label="View version history"
+              title="View version history"
+            >
+              ℹ️
+            </button>
+          </div>
         </div>
       </header>
 
@@ -367,6 +378,15 @@
             <section class="card provider-settings" id="local-settings">
               <h2>Local LLM Configuration</h2>
 
+              <div class="local-model-guidance">
+                <p class="hint">
+                  🧠 Use a good instruct model for stable JSON and better grouping.
+                </p>
+                <p class="hint">
+                  Recommended: 8B+ models (or larger). Very small models may skip assignments.
+                </p>
+              </div>
+
               <div class="form-group">
                 <label for="local-url">Server URL</label>
                 <input type="text" id="local-url" placeholder="http://localhost:11434" />
@@ -387,8 +407,8 @@
                 </select>
               </div>
 
-              <div class="setup-note">
-                <h3>🛠️ LM Studio Setup</h3>
+              <details class="setup-note compact-note">
+                <summary>🛠️ LM Studio Setup</summary>
                 <ol>
                   <li>Start your model server in LM Studio</li>
                   <li>
@@ -396,7 +416,7 @@
                   </li>
                   <li><strong>Enable CORS</strong> (required for browser extensions)</li>
                 </ol>
-              </div>
+              </details>
 
               <div class="form-actions">
                 <button class="btn primary save-btn">Save Settings</button>

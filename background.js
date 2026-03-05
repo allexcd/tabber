@@ -3,40 +3,105 @@
 import { AIService } from './services/ai-service.js';
 import { secureStorage } from './services/secure-storage.js';
 import { logger } from './services/logger.js';
+import {
+  detectBrowserInfo,
+  TAB_GROUP_TITLE_RENDER_FIXED_VERSION_LABEL,
+} from './services/browser-info.js';
 
 const aiService = new AIService();
 
 // Track tabs that are being processed to avoid duplicate processing
 const processingTabs = new Set();
+// Track newly created tabs so they can be regrouped even if browser auto-assigns them to a group.
+const pendingNewTabs = new Set();
+// Track last processed host per tab to re-evaluate on domain changes.
+const lastProcessedHostByTab = new Map();
+// Prevent concurrent "Group All Tabs" runs from overlapping.
+let groupAllRunInProgress = false;
 
 // Available colors for tab groups
 const GROUP_COLORS = ['blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange', 'grey'];
+const CONTROL_CHARS_REGEX = /\p{Cc}/gu;
+const ZERO_WIDTH_REGEX = /[\u200b-\u200d\ufeff]/g;
+const BROWSER_INFO = detectBrowserInfo();
+
+logger.log(
+  `Browser detected: ${BROWSER_INFO.browserName} ${BROWSER_INFO.browserVersion || ''} ${
+    BROWSER_INFO.isChromiumBased
+      ? `(Chromium ${BROWSER_INFO.chromiumMajor || 'unknown'})`
+      : '(non-Chromium)'
+  }`
+);
+if (BROWSER_INFO.isAffectedTabGroupLabelBug) {
+  logger.warn(
+    `Known tab-group title rendering bug detected for Chromium ${BROWSER_INFO.chromiumMajor}. Update to ${TAB_GROUP_TITLE_RENDER_FIXED_VERSION_LABEL}.`
+  );
+}
+
+function isInternalTabUrl(url) {
+  return (
+    !url ||
+    url.startsWith('chrome://') ||
+    url.startsWith('chrome-extension://') ||
+    url.startsWith('about:')
+  );
+}
+
+function getExecutionState() {
+  return {
+    isGroupingInProgress: groupAllRunInProgress,
+  };
+}
 
 // Listen for tab updates (when title changes/loads)
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
-  // Only process when the tab has finished loading and has a title
-  if (changeInfo.status === 'complete' && tab.title && !tab.pinned) {
-    // Skip if already in a group or being processed
-    if (tab.groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE || processingTabs.has(tabId)) {
-      return;
-    }
+  // Only process when the page has completed loading.
+  if (changeInfo.status !== 'complete' || !tab || tab.pinned) {
+    return;
+  }
 
-    // Skip browser internal pages
-    if (
-      tab.url?.startsWith('chrome://') ||
-      tab.url?.startsWith('chrome-extension://') ||
-      tab.url?.startsWith('about:')
-    ) {
-      return;
-    }
+  const isNewTabCandidate = pendingNewTabs.has(tabId);
+  const currentHost = getHostname(tab.url);
+  const previousHost = lastProcessedHostByTab.get(tabId);
+  const hasHostChanged = Boolean(previousHost && currentHost && currentHost !== previousHost);
+  const shouldProcess = isNewTabCandidate || hasHostChanged;
 
-    await processTab(tabId, tab);
+  if (!shouldProcess) {
+    return;
+  }
+
+  if (processingTabs.has(tabId) || isInternalTabUrl(tab.url)) {
+    return;
+  }
+
+  try {
+    const result = await processTab(tabId, tab);
+    if (result && currentHost) {
+      lastProcessedHostByTab.set(tabId, currentHost);
+    }
+  } finally {
+    pendingNewTabs.delete(tabId);
   }
 });
 
+chrome.tabs.onCreated.addListener((tab) => {
+  if (!tab?.pinned && Number.isInteger(tab.id)) {
+    pendingNewTabs.add(tab.id);
+  }
+});
+
+chrome.tabs.onRemoved.addListener((tabId) => {
+  pendingNewTabs.delete(tabId);
+  lastProcessedHostByTab.delete(tabId);
+  processingTabs.delete(tabId);
+});
+
 // Process a tab and assign it to a group
-// force: if true, process even if extension is disabled (used by Group All Tabs)
-async function processTab(tabId, tab, force = false) {
+// options.force: if true, process even if extension is disabled (used by Group All Tabs)
+// options.promptGroups: optional group list used only as AI prompt context
+// options.execute: if false, only return the decision without applying grouping
+async function processTab(tabId, tab, options = {}) {
+  const { force = false, promptGroups = null, execute = true } = options;
   processingTabs.add(tabId);
 
   try {
@@ -63,22 +128,36 @@ async function processTab(tabId, tab, force = false) {
       return;
     }
 
-    // Get existing groups in this window
-    const existingGroups = await getExistingGroups(tab.windowId);
+    // Prompt context contains current named groups so AI can reuse them.
+    const promptContextGroups = Array.isArray(promptGroups)
+      ? promptGroups
+      : await getExistingGroups(tab.windowId);
 
     // Ask AI for grouping decision
-    const decision = await aiService.getGroupingDecision(tab.title, tab.url, existingGroups);
+    const decision = await aiService.getGroupingDecision(
+      tabId,
+      tab.title,
+      tab.url,
+      promptContextGroups
+    );
 
     if (!decision) {
       logger.log('No decision from AI');
       processingTabs.delete(tabId);
-      return;
+      return null;
+    }
+
+    if (!execute) {
+      return decision;
     }
 
     // Execute the grouping
+    const existingGroups = await getExistingGroups(tab.windowId, { includeUntitled: true });
     await executeGrouping(tabId, tab.windowId, decision, existingGroups);
+    return decision;
   } catch (error) {
     logger.error('Error processing tab', error);
+    return null;
   } finally {
     processingTabs.delete(tabId);
   }
@@ -98,43 +177,142 @@ function isConfigured(settings) {
 }
 
 // Get existing tab groups in a window
-async function getExistingGroups(windowId) {
+async function getExistingGroups(windowId, options = {}) {
+  const { includeUntitled = false } = options;
   const groups = await chrome.tabGroups.query({ windowId });
-  return groups.map((g) => ({
+  const normalizedGroups = groups.map((g) => ({
     id: g.id,
-    title: g.title || 'Unnamed',
+    title: normalizeGroupName(g.title),
     color: g.color,
   }));
+
+  if (includeUntitled) {
+    return normalizedGroups;
+  }
+
+  return normalizedGroups.filter((g) => g.title);
 }
 
 // Execute the grouping decision
 async function executeGrouping(tabId, windowId, decision, existingGroups) {
   try {
+    const normalizedDecision = {
+      groupName: normalizeGroupName(decision.groupName) || 'Misc',
+      color: validateColor(decision.color),
+    };
+
     // Check if we should use an existing group
     const existingGroup = existingGroups.find(
-      (g) => g.title.toLowerCase() === decision.groupName.toLowerCase()
+      (g) =>
+        normalizeGroupName(g.title).toLowerCase() === normalizedDecision.groupName.toLowerCase()
     );
 
     if (existingGroup) {
       // Add to existing group
       await chrome.tabs.group({ tabIds: tabId, groupId: existingGroup.id });
       logger.log(`Added tab to existing group "${existingGroup.title}"`);
+
+      // Work around Chromium/Brave label rendering regression by re-applying metadata.
+      await forceGroupTitleRender(
+        existingGroup.id,
+        normalizedDecision.groupName,
+        validateColor(existingGroup.color || normalizedDecision.color)
+      );
     } else {
       // Create new group
       const groupId = await chrome.tabs.group({ tabIds: tabId, createProperties: { windowId } });
 
       // Set group properties
-      const color = validateColor(decision.color);
-      await chrome.tabGroups.update(groupId, {
-        title: decision.groupName,
-        color: color,
-      });
+      logger.log(
+        `About to set group ${groupId} title="${normalizedDecision.groupName}" color=${normalizedDecision.color}`
+      );
 
-      logger.log(`Created new group "${decision.groupName}" with color ${color}`);
+      // Set group metadata and force a render-friendly update sequence.
+      await forceGroupTitleRender(groupId, normalizedDecision.groupName, normalizedDecision.color);
+
+      // Verify what was actually set
+      const verifyGroup = await chrome.tabGroups.get(groupId);
+      logger.log(
+        `Verified group ${groupId}: title="${verifyGroup.title}" color=${verifyGroup.color}`
+      );
+
+      logger.log(
+        `Created new group "${normalizedDecision.groupName}" with color ${normalizedDecision.color}`
+      );
     }
   } catch (error) {
     logger.error('Error executing grouping', error);
   }
+}
+
+async function forceGroupTitleRender(groupId, title, color) {
+  const safeTitle = normalizeGroupName(title);
+  const safeColor = validateColor(color);
+  if (!safeTitle) {
+    return;
+  }
+
+  try {
+    // Always apply title and color once.
+    await chrome.tabGroups.update(groupId, { title: safeTitle, color: safeColor });
+
+    // Color nudge is only needed on Chromium 145 label-render regression builds.
+    if (!BROWSER_INFO.isAffectedTabGroupLabelBug) {
+      return;
+    }
+
+    const nudgeColor = pickDifferentColor(safeColor);
+    if (nudgeColor) {
+      logger.log(`Color nudge for group ${groupId}: ${safeColor} -> ${nudgeColor}`);
+      await chrome.tabGroups.update(groupId, { color: nudgeColor });
+
+      const afterNudge = await chrome.tabGroups.get(groupId);
+      logger.log(`Color after nudge for group ${groupId}: ${afterNudge.color}`);
+
+      await chrome.tabGroups.update(groupId, { color: safeColor });
+
+      const afterRestore = await chrome.tabGroups.get(groupId);
+      logger.log(`Color nudge restore for group ${groupId}: ${nudgeColor} -> ${safeColor}`);
+      logger.log(`Color after restore for group ${groupId}: ${afterRestore.color}`);
+    }
+  } catch (error) {
+    logger.debug(`Failed to force title render for group ${groupId}`, error);
+  }
+}
+
+function pickDifferentColor(currentColor) {
+  const safeCurrent = validateColor(currentColor);
+  const highContrastFallbacks = {
+    blue: 'orange',
+    cyan: 'red',
+    green: 'red',
+    grey: 'red',
+    orange: 'blue',
+    pink: 'blue',
+    purple: 'yellow',
+    red: 'blue',
+    yellow: 'purple',
+  };
+
+  const preferred = highContrastFallbacks[safeCurrent];
+  if (preferred && preferred !== safeCurrent) {
+    return preferred;
+  }
+
+  return GROUP_COLORS.find((color) => color !== safeCurrent) || null;
+}
+
+function normalizeGroupName(name) {
+  if (typeof name !== 'string') {
+    return '';
+  }
+
+  return name
+    .replace(CONTROL_CHARS_REGEX, ' ')
+    .replace(ZERO_WIDTH_REGEX, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 80);
 }
 
 // Validate and return a valid color
@@ -143,8 +321,7 @@ function validateColor(color) {
   if (GROUP_COLORS.includes(lowerColor)) {
     return lowerColor;
   }
-  // Return a random color if invalid
-  return GROUP_COLORS[Math.floor(Math.random() * GROUP_COLORS.length)];
+  return 'grey';
 }
 
 // Listen for messages from popup/settings
@@ -174,20 +351,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
-  if (message.action === 'reprocessTab') {
-    chrome.tabs.query({ active: true, currentWindow: true }, async (tabs) => {
-      if (tabs[0]) {
-        // Remove from current group first
-        if (tabs[0].groupId !== chrome.tabGroups.TAB_GROUP_ID_NONE) {
-          await chrome.tabs.ungroup(tabs[0].id);
-        }
-        await processTab(tabs[0].id, tabs[0]);
-        sendResponse({ success: true });
-      }
-    });
-    return true;
-  }
-
   if (message.action === 'getStatus') {
     secureStorage
       .get(['defaultProvider', 'enabled'])
@@ -195,12 +358,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         sendResponse({
           enabled: settings.enabled ?? false,
           provider: settings.defaultProvider ?? 'none',
+          ...getExecutionState(),
         });
       })
       .catch(() => {
         sendResponse({
           enabled: false,
           provider: 'none',
+          ...getExecutionState(),
         });
       });
     return true;
@@ -223,6 +388,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           enabled: settings.enabled ?? false,
           provider: settings.defaultProvider ?? 'none',
           isConfigured: isConfigured(settings),
+          browserInfo: BROWSER_INFO,
+          ...getExecutionState(),
         });
       })
       .catch((error) => {
@@ -230,13 +397,29 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           enabled: false,
           provider: 'none',
           isConfigured: false,
+          browserInfo: BROWSER_INFO,
+          ...getExecutionState(),
           error: error.message,
         });
       });
     return true;
   }
 
-  if (message.action === 'groupAllTabs') {
+  if (message.action === 'getBrowserInfo') {
+    sendResponse(BROWSER_INFO);
+    return true;
+  }
+
+  if (message.action === 'getExecutionState') {
+    sendResponse(getExecutionState());
+    return true;
+  }
+
+  if (
+    message.action === 'smartRegroupTabs' ||
+    message.action === 'groupAllTabs' ||
+    message.action === 'rebuildTabs'
+  ) {
     groupAllTabs()
       .then((result) => sendResponse(result))
       .catch((error) => sendResponse({ success: false, error: error.message }));
@@ -266,8 +449,21 @@ chrome.runtime.onInstalled.addListener(async () => {
   logger.log('Extension installed');
 });
 
-// Group all open tabs in the current window
+// Single regroup command: evaluate all tabs together and apply one grouping plan.
 async function groupAllTabs() {
+  if (groupAllRunInProgress) {
+    return { success: false, error: 'Grouping already in progress. Please wait.' };
+  }
+
+  groupAllRunInProgress = true;
+  try {
+    return await regroupAllTabs();
+  } finally {
+    groupAllRunInProgress = false;
+  }
+}
+
+async function regroupAllTabs() {
   const settings = await secureStorage.get([
     'defaultProvider',
     'openaiKey',
@@ -282,41 +478,70 @@ async function groupAllTabs() {
     return { success: false, error: 'AI not configured. Open settings first.' };
   }
 
-  // Get all tabs in current window that aren't pinned or already grouped
+  // Get all tabs in current window that can be regrouped.
   const tabs = await chrome.tabs.query({ currentWindow: true });
-  const ungroupedTabs = tabs.filter(
+  const regroupableTabs = tabs.filter(
     (tab) =>
       !tab.pinned &&
-      tab.groupId === chrome.tabGroups.TAB_GROUP_ID_NONE &&
       !tab.url?.startsWith('chrome://') &&
       !tab.url?.startsWith('chrome-extension://') &&
       !tab.url?.startsWith('about:')
   );
 
-  if (ungroupedTabs.length === 0) {
+  if (regroupableTabs.length === 0) {
     return { success: true, count: 0 };
   }
 
+  const windowId = regroupableTabs[0].windowId;
+  const promptGroups = await getExistingGroups(windowId);
+  let planEntries = [];
+  try {
+    planEntries = await aiService.getBatchGroupingPlan(regroupableTabs, promptGroups);
+  } catch (error) {
+    logger.error('Batch grouping plan failed', error);
+    return { success: false, error: 'AI request failed while building tab-group plan.' };
+  }
+
+  if (!Array.isArray(planEntries) || planEntries.length === 0) {
+    return { success: false, error: 'AI returned no valid tab assignments.' };
+  }
+
+  const planByTabId = new Map(
+    planEntries
+      .filter((entry) => entry && Number.isInteger(entry.tabId) && entry.decision)
+      .map((entry) => [entry.tabId, entry.decision])
+  );
+
   let groupedCount = 0;
+  let skippedCount = 0;
 
-  // Process tabs sequentially to avoid race conditions
-  for (const tab of ungroupedTabs) {
+  // Execute grouping from AI plan.
+  for (const tab of regroupableTabs) {
     try {
-      // Skip if tab doesn't have a title yet
-      if (!tab.title || tab.title === 'New Tab') continue;
+      const decision = planByTabId.get(tab.id);
+      if (!decision) {
+        skippedCount++;
+        logger.warn(`Skipping tab ${tab.id} - AI did not return an assignment`);
+        continue;
+      }
 
-      // Pass force=true to bypass the enabled check
-      await processTab(tab.id, tab, true);
+      const existingGroups = await getExistingGroups(tab.windowId, { includeUntitled: true });
+      await executeGrouping(tab.id, tab.windowId, decision, existingGroups);
       groupedCount++;
-
-      // Small delay to avoid overwhelming the AI API
-      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
-      logger.error(`Failed to group tab "${tab.title}"`, error);
+      logger.error(`Failed to apply grouping plan for tab "${tab.title}"`, error);
     }
   }
 
-  return { success: true, count: groupedCount };
+  return { success: true, count: groupedCount, skipped: skippedCount, mode: 'group-all' };
+}
+
+function getHostname(rawUrl) {
+  try {
+    return new URL(rawUrl).hostname.replace(/^www\./i, '').toLowerCase();
+  } catch {
+    return '';
+  }
 }
 
 // Test connection with provided configuration (used by settings page)
