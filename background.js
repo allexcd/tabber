@@ -542,7 +542,11 @@ async function regroupAllTabs() {
 
   let planEntries = [];
   try {
-    planEntries = await aiService.getBatchGroupingPlan(regroupableTabs, promptGroups, ruleOverrides);
+    planEntries = await aiService.getBatchGroupingPlan(
+      regroupableTabs,
+      promptGroups,
+      ruleOverrides
+    );
   } catch (error) {
     logger.error('Batch grouping plan failed', error);
     return { success: false, error: 'AI request failed while building tab-group plan.' };

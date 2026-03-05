@@ -48,9 +48,7 @@ export class RulesService {
       normalized = normalized.slice(2);
     }
 
-    const escaped = normalized
-      .replace(/[.+?^${}()|[\]\\]/g, '\\$&')
-      .replace(/\*/g, '.*');
+    const escaped = normalized.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
 
     return new RegExp(prefix + escaped);
   }

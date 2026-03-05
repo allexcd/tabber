@@ -55,23 +55,23 @@ For deterministic control, open **📋 Rules** (popup or settings header) to def
 
 **Pattern syntax:**
 
-| Pattern | Matches |
-|---------|---------|
-| `github.com` | Any URL containing `github.com` (substring) |
-| `*.github.com/*/pull/*` | GitHub PRs on any subdomain (glob) |
-| `youtube.com/watch` | YouTube video pages only |
-| `docs.*.io` | Docs sites on any `.io` domain |
+| Pattern                 | Matches                                     |
+| ----------------------- | ------------------------------------------- |
+| `github.com`            | Any URL containing `github.com` (substring) |
+| `*.github.com/*/pull/*` | GitHub PRs on any subdomain (glob)          |
+| `youtube.com/watch`     | YouTube video pages only                    |
+| `docs.*.io`             | Docs sites on any `.io` domain              |
 
 Glob rules use `*` as a wildcard for any sequence of characters. A leading `*.` is treated as an optional subdomain — `*.github.com` matches both `github.com` and `api.github.com`.
 
 **Example setup:**
 
-| URL Pattern | Group | Color |
-|-------------|-------|-------|
-| `*.github.com/*/pull/*` | PRs | green |
-| `github.com` | Code | blue |
-| `youtube.com/watch` | Videos | red |
-| `figma.com` | Design | purple |
+| URL Pattern             | Group  | Color  |
+| ----------------------- | ------ | ------ |
+| `*.github.com/*/pull/*` | PRs    | green  |
+| `github.com`            | Code   | blue   |
+| `youtube.com/watch`     | Videos | red    |
+| `figma.com`             | Design | purple |
 
 With this setup, GitHub PR tabs go to "PRs", other GitHub tabs go to "Code", YouTube video pages go to "Videos", and everything else is grouped by AI.
 
