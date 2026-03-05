@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "AI Tab Grouper",
+  "name": "AI Tab Grouper (Tabber)",
   "version": "1.0.0",
   "description": "Automatically organize Chrome tabs using AI - supports OpenAI, Claude, Groq, Gemini & Local LLMs with smart grouping",
   "homepage_url": "https://github.com/allexcd/tabber",
