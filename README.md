@@ -90,6 +90,8 @@ Before sending to AI, sensitive data is automatically redacted:
 - No data stored on external servers
 - **Local LLM option** for maximum privacy (data never leaves your machine)
 
+For complete privacy details, see [PRIVACY.md](PRIVACY.md).
+
 ### Security Architecture
 
 All external API requests are centralized in provider classes, which execute exclusively in the background service worker:
@@ -114,25 +116,42 @@ API keys encrypted at rest, decrypted only in memory within the background worke
 Tabber/
 ├── manifest.json           # Extension manifest (MV3)
 ├── background.js           # Service worker, tab processing
+├── PRIVACY.md              # Full privacy policy
+├── RELEASE_PROCESS.md      # Release workflow guide
+├── CHANGELOG.json          # Structured changelog data
 ├── popup/                  # Toolbar popup UI
 ├── settings/               # Options page
 │   ├── settings.js         # Settings orchestration
 │   ├── model-fetcher.js    # Dynamic model fetching via message passing
-│   └── model-cache.js      # Model caching
-└── services/               # Core services & providers
-    ├── ai-service.js       # Unified AI interface
-    ├── openai.js           # OpenAI provider (complete + listModels)
-    ├── claude.js           # Claude provider (complete + listModels)
-    ├── groq.js             # Groq provider (complete + listModels)
-    ├── gemini.js           # Gemini provider (complete + listModels)
-    ├── local-llm.js        # Local LLM provider
-    ├── sanitizer.js        # PII removal
-    ├── crypto.js           # AES-256-GCM encryption
-    ├── secure-storage.js   # Encrypted storage wrapper
-    └── logger.js           # Debug logging
+│   ├── model-cache.js      # Model caching
+│   ├── changelog.js        # Version history modal
+│   └── settings-fallback.js # Settings fallback handling
+├── services/               # Core services & providers
+│   ├── ai-service.js       # Unified AI interface
+│   ├── openai.js           # OpenAI provider (complete + listModels)
+│   ├── claude.js           # Claude provider (complete + listModels)
+│   ├── groq.js             # Groq provider (complete + listModels)
+│   ├── gemini.js           # Gemini provider (complete + listModels)
+│   ├── local-llm.js        # Local LLM provider
+│   ├── sanitizer.js        # PII removal
+│   ├── crypto.js           # AES-256-GCM encryption
+│   ├── secure-storage.js   # Encrypted storage wrapper
+│   ├── browser-info.js     # Browser detection & tab group bug detection
+│   ├── local-storage.js    # Local storage wrapper
+│   └── logger.js           # Debug logging
+└── scripts/                # Release and version management scripts
+    ├── bump-version.js
+    ├── changeset.js
+    ├── package.js
+    ├── tag-release.js
+    └── verify-changeset.js
 ```
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed architecture diagrams.
+
+### Release Management
+
+See [RELEASE_PROCESS.md](RELEASE_PROCESS.md) for the complete release workflow including versioning, changesets, and tagging.
 
 ### Code Quality
 
@@ -141,6 +160,10 @@ npm install              # Install dependencies
 npm run check            # Run all checks (lint + format + stylelint)
 npm run fix:all          # Auto-fix all issues
 npm run package          # Build extension.zip for Chrome Web Store
+npm run changeset        # Create a changeset for your changes
+npm run release:patch    # Create a patch release (x.x.1)
+npm run release:minor    # Create a minor release (x.1.0)
+npm run release:major    # Create a major release (1.0.0)
 ```
 
 #### Pre-commit Hooks
@@ -171,6 +194,8 @@ feat: Add GPT-5 model support
 fix: Resolve tab grouping race condition
 docs: Update installation instructions
 ```
+
+For detailed type definitions and when to use each (including which types trigger releases), see the [Conventional Commit Types](RELEASE_PROCESS.md#conventional-commit-types) section in RELEASE_PROCESS.md.
 
 ### Changesets
 
