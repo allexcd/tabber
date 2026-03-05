@@ -15,6 +15,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { execSync } from 'child_process';
 import readline from 'readline';
+import { generateSlug } from 'random-word-slugs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -128,9 +129,7 @@ async function main() {
     rl.close();
 
     // Generate filename
-    const timestamp = Date.now();
-    const slug = slugify(description);
-    const filename = `${timestamp}-${slug}.md`;
+    const filename = `${generateSlug()}.md`;
     const filePath = path.join(changesetDir, filename);
     const relativeFilePath = `.changeset/${filename}`;
 
