@@ -7,6 +7,7 @@
 ## Features
 
 - **🤖 AI-Powered Grouping**: OpenAI, Claude, Groq, Gemini, or local LLMs
+- **📋 Custom Grouping Rules**: Pin specific URLs to specific groups — AI handles the rest
 - **🆓 Free Options**: Groq and Google Gemini offer generous free tiers
 - **🎨 Smart Color Coding**: Semantic colors (blue=dev, green=finance, red=entertainment)
 - **⚡ Real-time**: Auto-groups new tabs as they load
@@ -34,6 +35,45 @@ Coming soon...
 2. Select AI provider and enter API key
 3. Click **🔄 Fetch** to load available models (optional)
 4. Save and enable extension
+
+## Tab Grouping
+
+### AI Grouping
+
+By default, every tab is grouped automatically by AI. The AI groups tabs by **meaning and intent**, not by website or brand — so Netflix, YouTube, and Prime Video all land in "Entertainment" rather than three separate groups.
+
+### Custom Grouping Rules
+
+For deterministic control, open **📋 Rules** (popup or settings header) to define URL-based rules. A rule matches a tab's URL and forces it into a specific group and color, bypassing AI entirely.
+
+**How rules work:**
+
+- Rules match top to bottom — the **first match wins**
+- Put **specific patterns above broad ones** (e.g. `github.com/*/pull/*` before `github.com`)
+- Tabs that match no rule fall through to AI grouping as normal
+- Rules are synced across Chrome instances via `chrome.storage.sync`
+
+**Pattern syntax:**
+
+| Pattern                 | Matches                                     |
+| ----------------------- | ------------------------------------------- |
+| `github.com`            | Any URL containing `github.com` (substring) |
+| `*.github.com/*/pull/*` | GitHub PRs on any subdomain (glob)          |
+| `youtube.com/watch`     | YouTube video pages only                    |
+| `docs.*.io`             | Docs sites on any `.io` domain              |
+
+Glob rules use `*` as a wildcard for any sequence of characters. A leading `*.` is treated as an optional subdomain — `*.github.com` matches both `github.com` and `api.github.com`.
+
+**Example setup:**
+
+| URL Pattern             | Group  | Color  |
+| ----------------------- | ------ | ------ |
+| `*.github.com/*/pull/*` | PRs    | green  |
+| `github.com`            | Code   | blue   |
+| `youtube.com/watch`     | Videos | red    |
+| `figma.com`             | Design | purple |
+
+With this setup, GitHub PR tabs go to "PRs", other GitHub tabs go to "Code", YouTube video pages go to "Videos", and everything else is grouped by AI.
 
 ## AI Provider Setup
 
@@ -122,12 +162,15 @@ Tabber/
 ├── popup/                  # Toolbar popup UI
 ├── settings/               # Options page
 │   ├── settings.js         # Settings orchestration
+│   ├── rules.html          # Custom grouping rules page
+│   ├── rules.js            # Custom grouping rules UI logic
 │   ├── model-fetcher.js    # Dynamic model fetching via message passing
 │   ├── model-cache.js      # Model caching
 │   ├── changelog.js        # Version history modal
 │   └── settings-fallback.js # Settings fallback handling
 ├── services/               # Core services & providers
 │   ├── ai-service.js       # Unified AI interface
+│   ├── rules-service.js    # Custom rule matching logic
 │   ├── openai.js           # OpenAI provider (complete + listModels)
 │   ├── claude.js           # Claude provider (complete + listModels)
 │   ├── groq.js             # Groq provider (complete + listModels)

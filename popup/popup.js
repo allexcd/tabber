@@ -312,6 +312,11 @@ function setupEventListeners() {
     chrome.runtime.openOptionsPage();
   });
 
+  // Rules button
+  document.getElementById('rules-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('settings/rules.html') });
+  });
+
   // Group all tabs button
   document.getElementById('group-all-btn').addEventListener('click', async () => {
     const btn = document.getElementById('group-all-btn');
