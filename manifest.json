@@ -31,7 +31,7 @@
   },
   "web_accessible_resources": [
     {
-      "resources": ["CHANGELOG.json"],
+      "resources": ["CHANGELOG.json", "settings/rules.html", "settings/rules.js"],
       "matches": ["<all_urls>"]
     }
   ]

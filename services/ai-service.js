@@ -115,11 +115,22 @@ function normalizeExistingGroups(existingGroups) {
   return normalized;
 }
 
-function buildAssignmentsPrompt(tabs, existingGroups) {
+function buildAssignmentsPrompt(tabs, existingGroups, ruleOverrides) {
+  // Annotate tabs that have rule overrides
+  const annotatedTabs = tabs.map((tab) => {
+    const override = ruleOverrides?.get(tab.tabId);
+    if (override) {
+      return { ...tab, ruleAssignment: { groupName: override.groupName, color: override.color } };
+    }
+    return tab;
+  });
+
   const payload = {
-    tabs,
+    tabs: annotatedTabs,
     existingGroups,
   };
+
+  const hasRules = ruleOverrides && ruleOverrides.size > 0;
 
   return `You are a tab-group assignment engine.
 
@@ -129,7 +140,16 @@ Given:
 2) a list of existing groups
 
 Assign each tab to a meaningful group.
-
+${
+  hasRules
+    ? `
+USER RULES
+Some tabs have a "ruleAssignment" field. You MUST assign these tabs to exactly
+the group specified in their ruleAssignment (same groupName and color).
+Do not override or rename these assignments.
+`
+    : ''
+}
 GROUPING STRATEGY
 1) Group by meaning, not by website/brand/page name.
 2) Reuse existing groups whenever they semantically fit.
@@ -300,7 +320,7 @@ export class AIService {
     return parseAssignments(response, expectedTabIds);
   }
 
-  async getGroupingDecision(tabId, title, url, existingGroups = []) {
+  async getGroupingDecision(tabId, title, url, existingGroups = [], ruleOverride = null) {
     const provider = await this.getProvider();
     if (!provider) {
       throw new Error('No AI provider configured');
@@ -320,7 +340,11 @@ export class AIService {
       },
     ];
     const groupsPayload = normalizeExistingGroups(existingGroups);
-    const prompt = buildAssignmentsPrompt(tabsPayload, groupsPayload);
+    const ruleOverrides = new Map();
+    if (ruleOverride) {
+      ruleOverrides.set(normalizedTabId, ruleOverride);
+    }
+    const prompt = buildAssignmentsPrompt(tabsPayload, groupsPayload, ruleOverrides);
 
     const assignments = await this.completeWithSchema(
       provider,
@@ -334,7 +358,7 @@ export class AIService {
     return decision;
   }
 
-  async getBatchGroupingPlan(tabs, existingGroups = []) {
+  async getBatchGroupingPlan(tabs, existingGroups = [], ruleOverrides = null) {
     const provider = await this.getProvider();
     if (!provider) {
       throw new Error('No AI provider configured');
@@ -357,7 +381,7 @@ export class AIService {
 
     const expectedTabIds = preparedTabs.map((tab) => tab.tabId);
     const groupsPayload = normalizeExistingGroups(existingGroups);
-    const prompt = buildAssignmentsPrompt(preparedTabs, groupsPayload);
+    const prompt = buildAssignmentsPrompt(preparedTabs, groupsPayload, ruleOverrides);
 
     const assignments = await this.completeWithSchema(
       provider,

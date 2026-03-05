@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Custom Grouping Rules - AI Tab Grouper (Tabber)</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <div class="header-row">
+          <div>
+            <h1>Custom Grouping Rules</h1>
+            <p class="subtitle">Force specific URLs into specific groups, regardless of AI</p>
+          </div>
+          <div class="header-actions">
+            <button
+              type="button"
+              class="header-action-btn"
+              id="back-btn"
+              aria-label="Back to Settings"
+              title="Back to Settings"
+            >
+              ← Settings
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <section class="card" id="custom-rules-section">
+          <div class="rules-header">
+            <div>
+              <p class="description" style="margin-bottom: 0">
+                Rules match top to bottom — the first match wins.
+                Put specific patterns <em>above</em> broad ones
+                (e.g. <code class="inline-code">*.github.com/*/pull/*</code> above <code class="inline-code">github.com</code>).
+                Unmatched and disabled tabs fall back to AI grouping.
+              </p>
+            </div>
+          </div>
+
+          <div id="rules-list"></div>
+
+          <div class="rules-actions">
+            <button class="btn secondary" id="add-rule-btn">+ Add Rule</button>
+            <button class="btn primary" id="save-rules-btn" disabled>Save Rules</button>
+          </div>
+        </section>
+      </main>
+
+      <footer>
+        <p>AI Tab Grouper (Tabber) v1.0.0</p>
+      </footer>
+    </div>
+
+    <script type="module" src="rules.js"></script>
+  </body>
+</html>

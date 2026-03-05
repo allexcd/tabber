@@ -163,6 +163,11 @@ function setupEventListeners() {
     });
   });
 
+  // Custom rules button
+  document.getElementById('custom-rules-btn').addEventListener('click', () => {
+    chrome.tabs.create({ url: chrome.runtime.getURL('settings/rules.html') });
+  });
+
   // Report issue button
   document.getElementById('report-issue-btn').addEventListener('click', () => {
     chrome.tabs.create({ url: GITHUB_ISSUES_URL });

@@ -1,6 +1,7 @@
 // AI Tab Grouper - Background Service Worker
 
 import { AIService } from './services/ai-service.js';
+import { RulesService } from './services/rules-service.js';
 import { secureStorage } from './services/secure-storage.js';
 import { logger } from './services/logger.js';
 import {
@@ -9,6 +10,7 @@ import {
 } from './services/browser-info.js';
 
 const aiService = new AIService();
+const rulesService = new RulesService();
 
 // Track tabs that are being processed to avoid duplicate processing
 const processingTabs = new Set();
@@ -141,12 +143,26 @@ async function processTab(tabId, tab, options = {}) {
       ? promptGroups
       : await getExistingGroups(tab.windowId);
 
+    // Check custom rules for a match
+    let ruleOverride = null;
+    try {
+      const rules = await rulesService.getRules();
+      const match = rulesService.matchTab(rules, tab.url);
+      if (match) {
+        ruleOverride = { groupName: match.groupName, color: match.color };
+        logger.log(`Rule matched for tab ${tabId}: "${match.urlPattern}" -> "${match.groupName}"`);
+      }
+    } catch (error) {
+      logger.warn('Failed to load custom rules', error);
+    }
+
     // Ask AI for grouping decision
     const decision = await aiService.getGroupingDecision(
       tabId,
       tab.title,
       tab.url,
-      promptContextGroups
+      promptContextGroups,
+      ruleOverride
     );
 
     if (!decision) {
@@ -509,9 +525,24 @@ async function regroupAllTabs() {
 
   const windowId = regroupableTabs[0].windowId;
   const promptGroups = await getExistingGroups(windowId);
+
+  // Build rule overrides for all matching tabs
+  let ruleOverrides = null;
+  try {
+    const rules = await rulesService.getRules();
+    if (rules.length > 0) {
+      ruleOverrides = rulesService.buildRuleOverrides(rules, regroupableTabs);
+      if (ruleOverrides.size > 0) {
+        logger.log(`Custom rules matched ${ruleOverrides.size} tab(s) in batch`);
+      }
+    }
+  } catch (error) {
+    logger.warn('Failed to load custom rules for batch', error);
+  }
+
   let planEntries = [];
   try {
-    planEntries = await aiService.getBatchGroupingPlan(regroupableTabs, promptGroups);
+    planEntries = await aiService.getBatchGroupingPlan(regroupableTabs, promptGroups, ruleOverrides);
   } catch (error) {
     logger.error('Batch grouping plan failed', error);
     return { success: false, error: 'AI request failed while building tab-group plan.' };
