@@ -19,7 +19,10 @@
     "version:minor": "node scripts/bump-version.js minor",
     "version:major": "node scripts/bump-version.js major",
     "version": "node scripts/bump-version.js",
-    "changeset": "node scripts/changeset.js"
+    "changeset": "node scripts/changeset.js",
+    "agents": "supervisor.sh",
+    "agents:reset": "supervisor.sh --reset",
+    "agents:collect": "collect-learnings.sh --yes"
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.1",

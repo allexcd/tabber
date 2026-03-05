@@ -26,7 +26,7 @@ export class ClaudeProvider {
       },
       body: JSON.stringify({
         model: model,
-        max_tokens: 100,
+        max_tokens: 512,
         messages: [
           {
             role: 'user',
