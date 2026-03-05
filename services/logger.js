@@ -1,7 +1,7 @@
 // Debug Logger Service
 // Centralized logging that can be enabled/disabled for development
 
-const DEBUG_ENABLED = true; // Set to true to enable debug logging
+const DEBUG_ENABLED = false; // Keep false in production; enable locally when debugging.
 
 const logger = {
   // Check if debug is enabled
