@@ -132,6 +132,7 @@ async function main() {
     const slug = slugify(description);
     const filename = `${timestamp}-${slug}.md`;
     const filePath = path.join(changesetDir, filename);
+    const relativeFilePath = `.changeset/${filename}`;
 
     // Ensure .changeset directory exists
     if (!fs.existsSync(changesetDir)) {
@@ -148,16 +149,21 @@ async function main() {
 
     // Stage and commit
     try {
-      execSync(`git add "${filePath}"`, { cwd: rootDir, stdio: 'pipe' });
+      execSync(`git add -- "${relativeFilePath}"`, { cwd: rootDir, stdio: 'pipe' });
       const commitMessage = `chore: Add changeset for ${selectedType.value}`;
-      execSync(`git commit -m "${commitMessage}"`, { cwd: rootDir, stdio: 'pipe' });
+      execSync(`git commit -m "${commitMessage}" --only -- "${relativeFilePath}"`, {
+        cwd: rootDir,
+        stdio: 'pipe',
+      });
       console.log(`✅ Staged and committed to branch ${branch}.`);
     } catch {
       console.log(`\n⚠ Could not auto-commit the changeset.`);
       console.log(`  The file has been created at: .changeset/${filename}`);
       console.log(`  Please stage and commit it manually:\n`);
       console.log(`    git add .changeset/${filename}`);
-      console.log(`    git commit -m "chore: Add changeset for ${selectedType.value}"\n`);
+      console.log(
+        `    git commit -m "chore: Add changeset for ${selectedType.value}" --only -- .changeset/${filename}\n`
+      );
     }
 
     console.log(`\nYou can now push your branch with: git push\n`);
