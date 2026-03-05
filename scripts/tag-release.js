@@ -334,8 +334,13 @@ function formatChangelogJsonSections(entries) {
 
 function updateChangelogJsonForRelease(version, entries) {
   let changelog = { versions: [] };
-  if (fs.existsSync(changelogJsonPath)) {
+
+  try {
     changelog = JSON.parse(fs.readFileSync(changelogJsonPath, 'utf8'));
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      throw new Error(`Failed to read CHANGELOG.json: ${error.message}`);
+    }
   }
 
   if (!changelog || !Array.isArray(changelog.versions)) {
