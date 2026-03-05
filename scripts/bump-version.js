@@ -9,6 +9,7 @@
  * - CHANGELOG.json
  * - CHANGELOG.md
  * - settings/settings.html
+ * - settings/rules.html
  *
  * Usage:
  *   npm run version:patch  # 1.0.0 -> 1.0.1
@@ -32,6 +33,7 @@ const FILES_TO_UPDATE = {
   changelogJson: path.join(rootDir, 'CHANGELOG.json'),
   changelogMd: path.join(rootDir, 'CHANGELOG.md'),
   settingsHtml: path.join(rootDir, 'settings', 'settings.html'),
+  rulesHtml: path.join(rootDir, 'settings', 'rules.html'),
 };
 
 /**
@@ -158,14 +160,26 @@ function updateChangelogMd(oldVersion, newVersion) {
 }
 
 /**
- * Update settings.html
+ * Update footer version text in HTML pages.
  */
-function updateSettingsHtml(oldVersion, newVersion) {
-  const filePath = FILES_TO_UPDATE.settingsHtml;
+function updateFooterVersion(filePath, oldVersion, newVersion) {
   let content = fs.readFileSync(filePath, 'utf8');
-  content = content.replace(`AI Tab Grouper v${oldVersion}`, `AI Tab Grouper v${newVersion}`);
-  fs.writeFileSync(filePath, content);
-  console.log(`✓ Updated ${path.basename(filePath)}: v${oldVersion} → v${newVersion}`);
+  const oldContent = content;
+
+  content = content.replace(
+    /AI Tab Grouper \(Tabber\) v\d+\.\d+\.\d+/g,
+    `AI Tab Grouper (Tabber) v${newVersion}`
+  );
+  content = content.replace(/AI Tab Grouper v\d+\.\d+\.\d+/g, `AI Tab Grouper v${newVersion}`);
+
+  if (content !== oldContent) {
+    fs.writeFileSync(filePath, content);
+    console.log(`✓ Updated ${path.basename(filePath)}: v${oldVersion} → v${newVersion}`);
+  } else {
+    console.log(
+      `⚠ Warning: No footer version text found in ${path.basename(filePath)}. Nothing updated.`
+    );
+  }
 }
 
 /**
@@ -201,7 +215,8 @@ function main() {
     updateManifestJson(oldVersion, newVersion);
     updateChangelogJson(oldVersion, newVersion);
     updateChangelogMd(oldVersion, newVersion);
-    updateSettingsHtml(oldVersion, newVersion);
+    updateFooterVersion(FILES_TO_UPDATE.settingsHtml, oldVersion, newVersion);
+    updateFooterVersion(FILES_TO_UPDATE.rulesHtml, oldVersion, newVersion);
 
     console.log(`\n✅ Version successfully updated to ${newVersion}`);
     console.log(`\nNext steps:`);
