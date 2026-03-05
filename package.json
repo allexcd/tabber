@@ -49,5 +49,8 @@
     "*.{html,md,json,yml,yaml}": [
       "prettier --write"
     ]
+  },
+  "dependencies": {
+    "random-word-slugs": "^0.1.7"
   }
 }
