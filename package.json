@@ -1,6 +1,6 @@
 {
   "name": "tabber",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "AI Tab Grouper - Chrome Extension",
@@ -19,6 +19,10 @@
     "version:minor": "node scripts/bump-version.js minor",
     "version:major": "node scripts/bump-version.js major",
     "version": "node scripts/bump-version.js",
+    "release:patch": "node scripts/tag-release.js patch",
+    "release:minor": "node scripts/tag-release.js minor",
+    "release:major": "node scripts/tag-release.js major",
+    "release": "node scripts/tag-release.js",
     "changeset": "node scripts/changeset.js",
     "agents": "supervisor.sh",
     "agents:reset": "supervisor.sh --reset",
