@@ -194,6 +194,11 @@ header h1 {
   background: linear-gradient(90deg, #059669, #10b981);
 }
 
+.fast-tooltip.theme-ungroup {
+  border-color: rgb(239 68 68 / 60%);
+  background: linear-gradient(90deg, #7f1d1d, #b91c1c);
+}
+
 .fast-tooltip::after {
   content: '';
   position: absolute;
@@ -207,4 +212,8 @@ header h1 {
 
 .fast-tooltip.theme-group::after {
   border-top-color: #10b981;
+}
+
+.fast-tooltip.theme-ungroup::after {
+  border-top-color: #b91c1c;
 }

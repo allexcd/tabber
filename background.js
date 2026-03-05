@@ -18,9 +18,11 @@ const pendingNewTabs = new Set();
 const lastProcessedHostByTab = new Map();
 // Prevent concurrent "Group All Tabs" runs from overlapping.
 let groupAllRunInProgress = false;
+let ungroupAllRunInProgress = false;
 
 // Available colors for tab groups
 const GROUP_COLORS = ['blue', 'red', 'yellow', 'green', 'pink', 'purple', 'cyan', 'orange', 'grey'];
+const TAB_GROUP_NONE = chrome.tabGroups?.TAB_GROUP_ID_NONE ?? -1;
 const CONTROL_CHARS_REGEX = /\p{Cc}/gu;
 const ZERO_WIDTH_REGEX = /[\u200b-\u200d\ufeff]/g;
 const BROWSER_INFO = detectBrowserInfo();
@@ -47,9 +49,15 @@ function isInternalTabUrl(url) {
   );
 }
 
+function isTabMutationInProgress() {
+  return groupAllRunInProgress || ungroupAllRunInProgress;
+}
+
 function getExecutionState() {
   return {
     isGroupingInProgress: groupAllRunInProgress,
+    isUngroupingInProgress: ungroupAllRunInProgress,
+    isTabMutationInProgress: isTabMutationInProgress(),
   };
 }
 
@@ -426,6 +434,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     return true;
   }
 
+  if (message.action === 'ungroupAllTabs') {
+    ungroupAllTabs()
+      .then((result) => sendResponse(result))
+      .catch((error) => sendResponse({ success: false, error: error.message }));
+    return true;
+  }
+
   if (message.action === 'fetchModels') {
     aiService
       .listModels(message.provider, message.apiKey)
@@ -451,8 +466,8 @@ chrome.runtime.onInstalled.addListener(async () => {
 
 // Single regroup command: evaluate all tabs together and apply one grouping plan.
 async function groupAllTabs() {
-  if (groupAllRunInProgress) {
-    return { success: false, error: 'Grouping already in progress. Please wait.' };
+  if (isTabMutationInProgress()) {
+    return { success: false, error: 'A tab action is already in progress. Please wait.' };
   }
 
   groupAllRunInProgress = true;
@@ -534,6 +549,37 @@ async function regroupAllTabs() {
   }
 
   return { success: true, count: groupedCount, skipped: skippedCount, mode: 'group-all' };
+}
+
+async function ungroupAllTabs() {
+  if (isTabMutationInProgress()) {
+    return { success: false, error: 'A tab action is already in progress. Please wait.' };
+  }
+
+  ungroupAllRunInProgress = true;
+  try {
+    const tabs = await chrome.tabs.query({ currentWindow: true });
+    const groupedTabIds = tabs
+      .filter(
+        (tab) =>
+          Number.isInteger(tab.id) &&
+          Number.isInteger(tab.groupId) &&
+          tab.groupId !== TAB_GROUP_NONE
+      )
+      .map((tab) => tab.id);
+
+    if (groupedTabIds.length === 0) {
+      return { success: true, count: 0, mode: 'ungroup-all' };
+    }
+
+    await chrome.tabs.ungroup(groupedTabIds);
+    return { success: true, count: groupedTabIds.length, mode: 'ungroup-all' };
+  } catch (error) {
+    logger.error('Ungroup all tabs failed', error);
+    return { success: false, error: error.message || 'Failed to ungroup tabs.' };
+  } finally {
+    ungroupAllRunInProgress = false;
+  }
 }
 
 function getHostname(rawUrl) {

@@ -33,6 +33,17 @@ function setGroupAllButtonState(button, { enabled, busy }) {
   button.textContent = busy ? '⏳ Grouping tabs...' : '🧠 Group All Tabs';
 }
 
+function setUngroupAllButtonState(button, { enabled, busy }) {
+  if (!button) {
+    return;
+  }
+
+  const isEnabled = Boolean(enabled) && !busy;
+  button.disabled = !isEnabled;
+  button.style.opacity = isEnabled ? '1' : '0.5';
+  button.textContent = busy ? '⏳ Ungrouping tabs...' : '🧹 Ungroup All Tabs';
+}
+
 // Load current status
 async function loadStatus() {
   try {
@@ -54,7 +65,11 @@ async function loadStatus() {
     const toggleBtn = document.getElementById('toggle-btn');
     const toggleText = document.getElementById('toggle-text');
     const groupAllBtn = document.getElementById('group-all-btn');
+    const ungroupAllBtn = document.getElementById('ungroup-all-btn');
     const isGroupingInProgress = Boolean(response.isGroupingInProgress);
+    const isUngroupingInProgress = Boolean(response.isUngroupingInProgress);
+    const isTabMutationInProgress =
+      Boolean(response.isTabMutationInProgress) || isGroupingInProgress || isUngroupingInProgress;
 
     renderBrowserMitigationWarning(resolveBrowserInfo(response.browserInfo));
 
@@ -65,7 +80,14 @@ async function loadStatus() {
       toggleText.textContent = 'Enable';
       toggleBtn.disabled = true;
       toggleBtn.style.opacity = '0.5';
-      setGroupAllButtonState(groupAllBtn, { enabled: false, busy: isGroupingInProgress });
+      setGroupAllButtonState(groupAllBtn, {
+        enabled: false,
+        busy: isGroupingInProgress,
+      });
+      setUngroupAllButtonState(ungroupAllBtn, {
+        enabled: !isTabMutationInProgress,
+        busy: isUngroupingInProgress,
+      });
     } else if (response.enabled) {
       indicator.className = 'status-indicator active';
       statusLabel.textContent = 'Active';
@@ -74,7 +96,14 @@ async function loadStatus() {
       toggleBtn.classList.add('danger');
       toggleBtn.disabled = false;
       toggleBtn.style.opacity = '1';
-      setGroupAllButtonState(groupAllBtn, { enabled: true, busy: isGroupingInProgress });
+      setGroupAllButtonState(groupAllBtn, {
+        enabled: !isTabMutationInProgress,
+        busy: isGroupingInProgress,
+      });
+      setUngroupAllButtonState(ungroupAllBtn, {
+        enabled: !isTabMutationInProgress,
+        busy: isUngroupingInProgress,
+      });
     } else {
       indicator.className = 'status-indicator inactive';
       statusLabel.textContent = 'Disabled';
@@ -83,7 +112,14 @@ async function loadStatus() {
       toggleBtn.classList.remove('danger');
       toggleBtn.disabled = false;
       toggleBtn.style.opacity = '1';
-      setGroupAllButtonState(groupAllBtn, { enabled: false, busy: isGroupingInProgress });
+      setGroupAllButtonState(groupAllBtn, {
+        enabled: false,
+        busy: isGroupingInProgress,
+      });
+      setUngroupAllButtonState(ungroupAllBtn, {
+        enabled: !isTabMutationInProgress,
+        busy: isUngroupingInProgress,
+      });
     }
   } catch (error) {
     logger.error('Failed to get status from background:', error);
@@ -112,8 +148,14 @@ async function loadStatusFallback() {
   const toggleBtn = document.getElementById('toggle-btn');
   const toggleText = document.getElementById('toggle-text');
   const groupAllBtn = document.getElementById('group-all-btn');
+  const ungroupAllBtn = document.getElementById('ungroup-all-btn');
   const executionState = await getExecutionStateFromBackground();
   const isGroupingInProgress = Boolean(executionState?.isGroupingInProgress);
+  const isUngroupingInProgress = Boolean(executionState?.isUngroupingInProgress);
+  const isTabMutationInProgress =
+    Boolean(executionState?.isTabMutationInProgress) ||
+    isGroupingInProgress ||
+    isUngroupingInProgress;
 
   renderBrowserMitigationWarning(resolveBrowserInfo(await getBrowserInfoFromBackground()));
 
@@ -128,7 +170,14 @@ async function loadStatusFallback() {
     toggleText.textContent = 'Enable';
     toggleBtn.disabled = true;
     toggleBtn.style.opacity = '0.5';
-    setGroupAllButtonState(groupAllBtn, { enabled: false, busy: isGroupingInProgress });
+    setGroupAllButtonState(groupAllBtn, {
+      enabled: false,
+      busy: isGroupingInProgress,
+    });
+    setUngroupAllButtonState(ungroupAllBtn, {
+      enabled: !isTabMutationInProgress,
+      busy: isUngroupingInProgress,
+    });
   } else if (settings.enabled) {
     indicator.className = 'status-indicator active';
     statusLabel.textContent = 'Active';
@@ -137,7 +186,14 @@ async function loadStatusFallback() {
     toggleBtn.classList.add('danger');
     toggleBtn.disabled = false;
     toggleBtn.style.opacity = '1';
-    setGroupAllButtonState(groupAllBtn, { enabled: true, busy: isGroupingInProgress });
+    setGroupAllButtonState(groupAllBtn, {
+      enabled: !isTabMutationInProgress,
+      busy: isGroupingInProgress,
+    });
+    setUngroupAllButtonState(ungroupAllBtn, {
+      enabled: !isTabMutationInProgress,
+      busy: isUngroupingInProgress,
+    });
   } else {
     indicator.className = 'status-indicator inactive';
     statusLabel.textContent = 'Disabled';
@@ -146,7 +202,14 @@ async function loadStatusFallback() {
     toggleBtn.classList.remove('danger');
     toggleBtn.disabled = false;
     toggleBtn.style.opacity = '1';
-    setGroupAllButtonState(groupAllBtn, { enabled: false, busy: isGroupingInProgress });
+    setGroupAllButtonState(groupAllBtn, {
+      enabled: false,
+      busy: isGroupingInProgress,
+    });
+    setUngroupAllButtonState(ungroupAllBtn, {
+      enabled: !isTabMutationInProgress,
+      busy: isUngroupingInProgress,
+    });
   }
 }
 
@@ -269,6 +332,27 @@ function setupEventListeners() {
     }
     await loadStatus();
   });
+
+  // Ungroup all tabs button
+  document.getElementById('ungroup-all-btn').addEventListener('click', async () => {
+    const btn = document.getElementById('ungroup-all-btn');
+    if (btn.disabled) {
+      return;
+    }
+    setUngroupAllButtonState(btn, { enabled: false, busy: true });
+
+    try {
+      const response = await chrome.runtime.sendMessage({ action: 'ungroupAllTabs' });
+      if (response.success) {
+        btn.textContent = `✓ Ungrouped ${response.count} tabs`;
+      } else {
+        btn.textContent = `✗ ${response.error || 'Failed'}`;
+      }
+    } catch (error) {
+      btn.textContent = '✗ Error';
+    }
+    await loadStatus();
+  });
 }
 
 function setupFastTooltips() {
@@ -304,6 +388,7 @@ function setupFastTooltips() {
     tooltip.setAttribute('aria-hidden', 'true');
     tooltip.textContent = '';
     tooltip.classList.remove('theme-group');
+    tooltip.classList.remove('theme-ungroup');
   };
 
   const refreshActiveTooltip = () => {
@@ -325,6 +410,7 @@ function setupFastTooltips() {
 
 function applyTooltipTheme(tooltip, target) {
   tooltip.classList.remove('theme-group');
+  tooltip.classList.remove('theme-ungroup');
   const theme = target.getAttribute('data-tooltip-theme');
   if (!theme) {
     return;
@@ -332,6 +418,8 @@ function applyTooltipTheme(tooltip, target) {
 
   if (theme === 'group') {
     tooltip.classList.add('theme-group');
+  } else if (theme === 'ungroup') {
+    tooltip.classList.add('theme-ungroup');
   }
 }
 
