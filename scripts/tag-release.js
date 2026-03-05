@@ -29,6 +29,8 @@ const rootDir = path.resolve(__dirname, '..');
 const changesetDir = path.join(rootDir, '.changeset');
 const bumpScriptPath = path.join(rootDir, 'scripts', 'bump-version.js');
 const packageJsonPath = path.join(rootDir, 'package.json');
+const changelogMdPath = path.join(rootDir, 'CHANGELOG.md');
+const changelogJsonPath = path.join(rootDir, 'CHANGELOG.json');
 
 const TYPE_TITLES = {
   feat: 'Features',
@@ -58,6 +60,52 @@ const TYPE_ORDER = [
   'chore',
   'revert',
   'other',
+];
+
+const CHANGELOG_SECTION_MAP = {
+  feat: 'Added',
+  fix: 'Fixed',
+  docs: 'Documentation',
+  test: 'Tests',
+  style: 'Changed',
+  refactor: 'Changed',
+  perf: 'Changed',
+  build: 'Technical',
+  ci: 'Technical',
+  chore: 'Technical',
+  revert: 'Changed',
+  other: 'Changed',
+};
+
+const CHANGELOG_SECTION_ORDER = [
+  'Added',
+  'Changed',
+  'Fixed',
+  'Technical',
+  'Documentation',
+  'Tests',
+];
+const CHANGELOG_JSON_SECTION_MAP = {
+  feat: 'Added',
+  fix: 'Fixed',
+  docs: 'Documentation',
+  style: 'Changed',
+  refactor: 'Changed',
+  perf: 'Changed',
+  test: 'Technical',
+  build: 'Technical',
+  ci: 'Technical',
+  chore: 'Technical',
+  revert: 'Changed',
+  other: 'Changed',
+};
+const CHANGELOG_JSON_SECTION_ORDER = [
+  'Added',
+  'Changed',
+  'Fixed',
+  'Security',
+  'Technical',
+  'Documentation',
 ];
 
 function parseVersion(version) {
@@ -153,10 +201,24 @@ function parseChangeset(content, filePath) {
 
   return {
     type,
-    description: body || fallbackDescription,
+    description: normalizeDescription(body || fallbackDescription),
     branch: metadata.branch || null,
     filePath,
   };
+}
+
+function normalizeDescription(text) {
+  return text
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .join(' ');
+}
+
+function normalizeVersion(version) {
+  return String(version || '')
+    .replace(/^v/i, '')
+    .trim();
 }
 
 function formatReleaseNotes(version, entries) {
@@ -187,6 +249,126 @@ function formatReleaseNotes(version, entries) {
   }
 
   return lines.join('\n').trim() + '\n';
+}
+
+function escapeRegExp(text) {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function formatChangelogSections(entries) {
+  const sections = new Map();
+  for (const section of CHANGELOG_SECTION_ORDER) {
+    sections.set(section, []);
+  }
+
+  for (const entry of entries) {
+    const section = CHANGELOG_SECTION_MAP[entry.type] || 'Changed';
+    sections.get(section).push(entry.description);
+  }
+
+  const lines = [];
+  for (const section of CHANGELOG_SECTION_ORDER) {
+    const sectionEntries = sections.get(section);
+    if (!sectionEntries || sectionEntries.length === 0) {
+      continue;
+    }
+
+    lines.push(`### ${section}`);
+    for (const description of sectionEntries) {
+      lines.push(`- ${description}`);
+    }
+    lines.push('');
+  }
+
+  return lines.join('\n').trim();
+}
+
+function updateChangelogMdForRelease(version, entries) {
+  const content = fs.readFileSync(changelogMdPath, 'utf8');
+  const headingRegex = new RegExp(`^## \\[${escapeRegExp(version)}\\] - .*?$`, 'm');
+  const headingMatch = content.match(headingRegex);
+
+  if (!headingMatch || headingMatch.index === undefined) {
+    throw new Error(`Could not find CHANGELOG.md section for version ${version}.`);
+  }
+
+  const headingStart = headingMatch.index;
+  const headingEnd = headingStart + headingMatch[0].length;
+  const nextHeadingRelativeIndex = content.slice(headingEnd).search(/\n## \[/);
+  const sectionEnd =
+    nextHeadingRelativeIndex === -1 ? content.length : headingEnd + nextHeadingRelativeIndex + 1;
+
+  const sectionsBody = formatChangelogSections(entries);
+  const updatedSection = sectionsBody
+    ? `${headingMatch[0]}\n\n${sectionsBody}\n`
+    : `${headingMatch[0]}\n`;
+  const updatedContent =
+    content.slice(0, headingStart) + updatedSection + content.slice(sectionEnd);
+
+  fs.writeFileSync(changelogMdPath, updatedContent, 'utf8');
+  console.log(`✓ Updated ${path.basename(changelogMdPath)} with release notes for v${version}`);
+}
+
+function formatChangelogJsonSections(entries) {
+  const sections = new Map();
+  for (const section of CHANGELOG_JSON_SECTION_ORDER) {
+    sections.set(section, []);
+  }
+
+  for (const entry of entries) {
+    const section = CHANGELOG_JSON_SECTION_MAP[entry.type] || 'Changed';
+    sections.get(section).push(entry.description);
+  }
+
+  const sectionObject = {};
+  for (const section of CHANGELOG_JSON_SECTION_ORDER) {
+    const sectionEntries = sections.get(section);
+    if (!sectionEntries || sectionEntries.length === 0) {
+      continue;
+    }
+    sectionObject[section] = sectionEntries;
+  }
+
+  return sectionObject;
+}
+
+function updateChangelogJsonForRelease(version, entries) {
+  let changelog = { versions: [] };
+
+  try {
+    changelog = JSON.parse(fs.readFileSync(changelogJsonPath, 'utf8'));
+  } catch (error) {
+    if (error?.code !== 'ENOENT') {
+      throw new Error(`Failed to read CHANGELOG.json: ${error.message}`);
+    }
+  }
+
+  if (!changelog || !Array.isArray(changelog.versions)) {
+    throw new Error('CHANGELOG.json is not in the expected format.');
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+  const releaseEntry = {
+    version,
+    date: today,
+    sections: formatChangelogJsonSections(entries),
+  };
+
+  const existingIndex = changelog.versions.findIndex(
+    (entry) => normalizeVersion(entry.version) === normalizeVersion(version)
+  );
+
+  if (existingIndex === -1) {
+    changelog.versions.unshift(releaseEntry);
+  } else if (existingIndex === 0) {
+    changelog.versions[0] = releaseEntry;
+  } else {
+    changelog.versions.splice(existingIndex, 1);
+    changelog.versions.unshift(releaseEntry);
+  }
+
+  fs.writeFileSync(changelogJsonPath, JSON.stringify(changelog, null, 2) + '\n', 'utf8');
+  console.log(`✓ Updated ${path.basename(changelogJsonPath)} with release notes for v${version}`);
 }
 
 function tagExists(tagName) {
@@ -272,6 +454,9 @@ function main() {
         `Version mismatch after bump (expected ${targetVersion}, got ${finalVersion}).`
       );
     }
+
+    updateChangelogMdForRelease(finalVersion, entries);
+    updateChangelogJsonForRelease(finalVersion, entries);
 
     const releaseNotes = formatReleaseNotes(finalVersion, entries);
     createAnnotatedTag(`v${finalVersion}`, releaseNotes);

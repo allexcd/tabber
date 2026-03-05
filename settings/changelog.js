@@ -17,16 +17,16 @@ export function setupChangelogModal() {
 
   const openModal = async () => {
     modal.classList.remove('hidden');
-    content.innerHTML = '<p class="loading">Loading changelog...</p>';
+    content.innerHTML = '<p class="loading">Loading release notes...</p>';
     try {
       const response = await fetch(chrome.runtime.getURL('CHANGELOG.json'));
       if (!response.ok) {
-        throw new Error('Failed to load changelog');
+        throw new Error('Failed to load release notes');
       }
       const data = await response.json();
       renderChangelog(data, content);
     } catch (error) {
-      content.innerHTML = '<p class="loading">Unable to load changelog.</p>';
+      content.innerHTML = '<p class="loading">Unable to load release notes.</p>';
     }
   };
 
@@ -46,11 +46,21 @@ export function setupChangelogModal() {
 
 function renderChangelog(data, container) {
   if (!data || !Array.isArray(data.versions) || data.versions.length === 0) {
-    container.innerHTML = '<p class="loading">No changelog data available.</p>';
+    container.innerHTML = '<p class="loading">No release notes data available.</p>';
     return;
   }
 
-  const html = data.versions
+  const currentVersion = normalizeVersion(chrome.runtime.getManifest().version);
+  const releaseNotes = data.versions.filter(
+    (version) => normalizeVersion(version.version) === currentVersion
+  );
+
+  if (releaseNotes.length === 0) {
+    container.innerHTML = '<p class="loading">No release notes available for this version.</p>';
+    return;
+  }
+
+  const html = releaseNotes
     .map((version) => {
       const sections = version.sections || {};
       const sectionHtml = Object.keys(sections)
@@ -79,5 +89,11 @@ function renderChangelog(data, container) {
     })
     .join('');
 
-  container.innerHTML = html || '<p class="loading">No changelog data available.</p>';
+  container.innerHTML = html || '<p class="loading">No release notes data available.</p>';
+}
+
+function normalizeVersion(version) {
+  return String(version || '')
+    .replace(/^v/i, '')
+    .trim();
 }
