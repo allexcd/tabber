@@ -79,3 +79,7 @@ export function validateHttpUrl(rawUrl, options = {}) {
 export function validateLoopbackHttpUrl(rawUrl, options = {}) {
   return validateHttpUrl(rawUrl, { ...options, requireLoopback: true });
 }
+
+export function buildLoopbackRestrictionMessage(label = 'URL') {
+  return `${label} must use localhost, 127.0.0.1, or [::1] while Local-Only URL Restriction is enabled. Disable Local-Only URL Restriction in Local LLM settings to allow remote URLs.`;
+}

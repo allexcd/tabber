@@ -2,6 +2,7 @@
 // Central definition for provider labels, required config, and model-fetch behavior.
 
 import {
+  buildLoopbackRestrictionMessage,
   isLoopbackRestrictionEnabled,
   validateHttpUrl,
   validateLoopbackHttpUrl,
@@ -90,9 +91,14 @@ export function validateProviderConfig(providerId, settings = {}) {
 
   if (providerId === 'local') {
     const requireLoopback = isLoopbackRestrictionEnabled(settings.localStrictLoopback, true);
+    const localUrlLabel = 'Local LLM server URL';
+    const loopbackOptions = {
+      label: localUrlLabel,
+      loopbackMessage: buildLoopbackRestrictionMessage(localUrlLabel),
+    };
     const urlValidation = requireLoopback
-      ? validateLoopbackHttpUrl(settings.localUrl, { label: 'Local LLM server URL' })
-      : validateHttpUrl(settings.localUrl, { label: 'Local LLM server URL' });
+      ? validateLoopbackHttpUrl(settings.localUrl, loopbackOptions)
+      : validateHttpUrl(settings.localUrl, { label: localUrlLabel });
     if (!urlValidation.valid) {
       return { valid: false, message: urlValidation.message };
     }

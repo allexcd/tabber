@@ -184,7 +184,8 @@ All extension data is stored under a unified `tabber` key namespace.
   localUrl: string,
   localModel: string,
   localApiFormat: "auto" | "openai" | "ollama",
-  localStrictLoopback: boolean
+  localStrictLoopback: boolean,
+  localLoopbackUpgradeNoticeSeen: boolean
 }
 ```
 

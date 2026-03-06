@@ -394,6 +394,35 @@
                 </p>
               </div>
 
+              <div
+                class="local-upgrade-warning hidden compact-full-width"
+                id="local-upgrade-warning"
+              >
+                <p class="local-upgrade-title">⚠ Upgrade Notice</p>
+                <p class="hint">
+                  Your current Local LLM URL is remote and is blocked while Local-Only URL
+                  Restriction is enabled.
+                </p>
+                <div class="local-upgrade-actions">
+                  <button
+                    type="button"
+                    class="btn secondary"
+                    id="allow-remote-local-url-btn"
+                    title="Disable local-only restriction for this URL"
+                  >
+                    Allow Remote URL
+                  </button>
+                  <button
+                    type="button"
+                    class="btn secondary"
+                    id="keep-local-only-btn"
+                    title="Keep local-only restriction and dismiss this message"
+                  >
+                    Keep Local-Only
+                  </button>
+                </div>
+              </div>
+
               <div class="form-group compact-full-width">
                 <label for="local-url">Server URL</label>
                 <input type="text" id="local-url" placeholder="http://localhost:11434" />

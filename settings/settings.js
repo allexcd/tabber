@@ -4,6 +4,7 @@
 import { secureStorage } from '../services/secure-storage.js';
 import { logger } from '../services/logger.js';
 import { PROVIDER_IDS, validateProviderConfig } from '../services/provider-metadata.js';
+import { isLoopbackHostname, isLoopbackRestrictionEnabled } from '../services/local-url-guard.js';
 import {
   loadCachedModels,
   isCustomModel,
@@ -19,6 +20,7 @@ import {
 import { setupChangelogModal } from './changelog.js';
 
 const GITHUB_ISSUES_URL = 'https://github.com/allexcd/tabber/issues/new/choose';
+let currentSettings = {};
 
 const PROVIDER_FORM_BINDINGS = Object.freeze({
   openai: Object.freeze([
@@ -100,9 +102,60 @@ const STORAGE_KEYS = Object.freeze([
   'localModel',
   'localApiFormat',
   'localStrictLoopback',
+  'localLoopbackUpgradeNoticeSeen',
 ]);
 
 logger.log('Settings module loaded');
+
+function hasNonLoopbackLocalUrl(rawUrl) {
+  const value = String(rawUrl || '').trim();
+  if (!value) {
+    return false;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return false;
+  }
+
+  return !isLoopbackHostname(parsed.hostname);
+}
+
+function shouldShowLocalUpgradeWarning(provider, settings) {
+  if (provider !== 'local') {
+    return false;
+  }
+
+  if (settings.localLoopbackUpgradeNoticeSeen) {
+    return false;
+  }
+
+  const strictEnabled = isLoopbackRestrictionEnabled(settings.localStrictLoopback, true);
+  if (!strictEnabled) {
+    return false;
+  }
+
+  return hasNonLoopbackLocalUrl(settings.localUrl);
+}
+
+function setLocalUpgradeWarningVisibility(visible) {
+  const warning = document.getElementById('local-upgrade-warning');
+  if (!warning) {
+    return;
+  }
+
+  warning.classList.toggle('hidden', !visible);
+}
+
+function refreshLocalUpgradeWarning(provider) {
+  setLocalUpgradeWarningVisibility(shouldShowLocalUpgradeWarning(provider, currentSettings));
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
   logger.log('DOMContentLoaded fired');
@@ -206,6 +259,7 @@ function validateSettings(provider, settings) {
 
 async function loadSettings() {
   const settings = await secureStorage.get(STORAGE_KEYS);
+  currentSettings = { ...settings };
 
   document.getElementById('enabled').checked = settings.enabled ?? false;
 
@@ -229,6 +283,7 @@ function setupEventListeners() {
   document.getElementById('enabled').addEventListener('change', async (e) => {
     try {
       await secureStorage.set({ enabled: e.target.checked });
+      currentSettings = { ...currentSettings, enabled: e.target.checked };
       logger.log('Extension enabled state saved:', e.target.checked);
 
       chrome.runtime
@@ -254,6 +309,54 @@ function setupEventListeners() {
 
   document.getElementById('report-issue-btn').addEventListener('click', () => {
     chrome.tabs.create({ url: GITHUB_ISSUES_URL });
+  });
+
+  document.getElementById('allow-remote-local-url-btn')?.addEventListener('click', async () => {
+    try {
+      await secureStorage.set({
+        localStrictLoopback: false,
+        localLoopbackUpgradeNoticeSeen: true,
+      });
+      currentSettings = {
+        ...currentSettings,
+        localStrictLoopback: false,
+        localLoopbackUpgradeNoticeSeen: true,
+      };
+
+      const strictToggle = document.getElementById('local-strict-loopback');
+      if (strictToggle) {
+        strictToggle.checked = false;
+      }
+
+      refreshLocalUpgradeWarning('local');
+      updateDefaultButtonState('local');
+
+      chrome.runtime
+        .sendMessage({
+          action: 'settingsSaved',
+          provider: 'local',
+        })
+        .catch(() => {});
+
+      showStatus('Remote URL allowed. Local-Only URL Restriction is now disabled.', 'success');
+    } catch (error) {
+      logger.error('Failed to disable Local-Only URL Restriction:', error);
+      showStatus(`Failed to update Local LLM setting: ${error.message}`, 'error');
+    }
+  });
+
+  document.getElementById('keep-local-only-btn')?.addEventListener('click', async () => {
+    try {
+      await secureStorage.set({ localLoopbackUpgradeNoticeSeen: true });
+      currentSettings = {
+        ...currentSettings,
+        localLoopbackUpgradeNoticeSeen: true,
+      };
+      refreshLocalUpgradeWarning('local');
+    } catch (error) {
+      logger.error('Failed to dismiss Local LLM upgrade warning:', error);
+      showStatus(`Failed to dismiss warning: ${error.message}`, 'error');
+    }
   });
 
   Object.values(PROVIDER_FORM_BINDINGS)
@@ -330,6 +433,10 @@ function setupEventListeners() {
           logger.log('Synced enabled state from storage:', newSettings.enabled);
         }
       }
+
+      currentSettings = { ...currentSettings, ...newSettings };
+      const activeProvider = document.querySelector('input[name="provider"]:checked')?.value;
+      refreshLocalUpgradeWarning(activeProvider);
     }
   });
 }
@@ -347,6 +454,8 @@ function showProviderSettings(provider) {
     logger.log('Loading cached models for:', provider);
     loadCachedModelsForProvider(provider);
   }
+
+  refreshLocalUpgradeWarning(provider);
 }
 
 async function saveSettings() {
@@ -369,9 +478,11 @@ async function saveSettings() {
 
   try {
     await secureStorage.set(settings);
+    currentSettings = { ...currentSettings, ...settings };
     logger.log(`Saved settings for ${provider.toUpperCase()}`);
 
     updateDefaultButtonState(provider);
+    refreshLocalUpgradeWarning(provider);
 
     chrome.runtime
       .sendMessage({
@@ -454,10 +565,12 @@ async function makeProviderDefault(provider) {
     }
 
     await secureStorage.set(settings);
+    currentSettings = { ...currentSettings, ...settings };
     logger.log(`Set ${provider.toUpperCase()} as default provider (with settings saved)`);
 
     updateDefaultProviderUI(provider);
     updateEnabledToggleState(provider);
+    refreshLocalUpgradeWarning(provider);
 
     chrome.runtime
       .sendMessage({
