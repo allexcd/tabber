@@ -401,7 +401,7 @@ export class AIService {
     return plans;
   }
 
-  async listModels(providerName, apiKey) {
+  async listModels(providerName, credential) {
     const provider = this.providers[providerName];
     if (!provider) {
       throw new Error(`Unknown provider: ${providerName}`);
@@ -410,7 +410,7 @@ export class AIService {
       throw new Error(`Provider ${providerName} does not support model listing`);
     }
 
-    return provider.listModels(apiKey);
+    return provider.listModels(credential);
   }
 
   async testConnection() {

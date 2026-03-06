@@ -4,6 +4,7 @@ import { AIService } from './services/ai-service.js';
 import { RulesService } from './services/rules-service.js';
 import { secureStorage } from './services/secure-storage.js';
 import { logger } from './services/logger.js';
+import { isProviderConfigured, validateProviderConfig } from './services/provider-metadata.js';
 import {
   detectBrowserInfo,
   TAB_GROUP_TITLE_RENDER_FIXED_VERSION_LABEL,
@@ -122,6 +123,8 @@ async function processTab(tabId, tab, options = {}) {
       'claudeKey',
       'localUrl',
       'localModel',
+      'localApiFormat',
+      'localStrictLoopback',
       'groqKey',
       'geminiKey',
       'enabled',
@@ -189,15 +192,7 @@ async function processTab(tabId, tab, options = {}) {
 
 // Check if AI provider is properly configured
 function isConfigured(settings) {
-  const provider = settings.defaultProvider;
-
-  if (provider === 'openai' && settings.openaiKey && settings.openaiKey.trim()) return true;
-  if (provider === 'claude' && settings.claudeKey && settings.claudeKey.trim()) return true;
-  if (provider === 'local' && settings.localUrl && settings.localModel) return true;
-  if (provider === 'groq' && settings.groqKey && settings.groqKey.trim()) return true;
-  if (provider === 'gemini' && settings.geminiKey && settings.geminiKey.trim()) return true;
-
-  return false;
+  return isProviderConfigured(settings.defaultProvider, settings);
 }
 
 // Get existing tab groups in a window
@@ -404,6 +399,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         'claudeKey',
         'localUrl',
         'localModel',
+        'localApiFormat',
+        'localStrictLoopback',
         'groqKey',
         'geminiKey',
       ])
@@ -459,7 +456,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
   if (message.action === 'fetchModels') {
     aiService
-      .listModels(message.provider, message.apiKey)
+      .listModels(message.provider, message.credential ?? message.apiKey)
       .then((models) => sendResponse({ success: true, models }))
       .catch((error) => sendResponse({ success: false, error: error.message }));
     return true;
@@ -501,6 +498,8 @@ async function regroupAllTabs() {
     'claudeKey',
     'localUrl',
     'localModel',
+    'localApiFormat',
+    'localStrictLoopback',
     'groqKey',
     'geminiKey',
   ]);
@@ -632,48 +631,14 @@ async function testConnectionWithConfig(config) {
   }
 
   try {
-    let provider;
+    const validation = validateProviderConfig(config.provider, config);
+    if (!validation.valid) {
+      return { success: false, error: validation.message };
+    }
 
-    // Create provider instance based on config
-    switch (config.provider) {
-      case 'openai':
-        if (!config.openaiKey) {
-          return { success: false, error: 'OpenAI API key is required' };
-        }
-        // Temporarily use the provided config for testing
-        provider = aiService.providers.openai;
-        break;
-
-      case 'claude':
-        if (!config.claudeKey) {
-          return { success: false, error: 'Claude API key is required' };
-        }
-        provider = aiService.providers.claude;
-        break;
-
-      case 'local':
-        if (!config.localUrl || !config.localModel) {
-          return { success: false, error: 'Local LLM URL and model are required' };
-        }
-        provider = aiService.providers.local;
-        break;
-
-      case 'groq':
-        if (!config.groqKey) {
-          return { success: false, error: 'Groq API key is required' };
-        }
-        provider = aiService.providers.groq;
-        break;
-
-      case 'gemini':
-        if (!config.geminiKey) {
-          return { success: false, error: 'Google Gemini API key is required' };
-        }
-        provider = aiService.providers.gemini;
-        break;
-
-      default:
-        return { success: false, error: `Unknown provider: ${config.provider}` };
+    const provider = aiService.providers[config.provider];
+    if (!provider) {
+      return { success: false, error: `Unknown provider: ${config.provider}` };
     }
 
     // Test the connection using a simple test prompt

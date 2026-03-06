@@ -1,8 +1,10 @@
 // Settings Page Logic - Main Module
-// Orchestrates settings functionality using specialized modules
+// Orchestrates settings functionality using specialized modules.
 
 import { secureStorage } from '../services/secure-storage.js';
 import { logger } from '../services/logger.js';
+import { PROVIDER_IDS, validateProviderConfig } from '../services/provider-metadata.js';
+import { isLoopbackHostname, isLoopbackRestrictionEnabled } from '../services/local-url-guard.js';
 import {
   loadCachedModels,
   isCustomModel,
@@ -18,26 +20,158 @@ import {
 import { setupChangelogModal } from './changelog.js';
 
 const GITHUB_ISSUES_URL = 'https://github.com/allexcd/tabber/issues/new/choose';
+let currentSettings = {};
+
+const PROVIDER_FORM_BINDINGS = Object.freeze({
+  openai: Object.freeze([
+    { key: 'openaiKey', id: 'openai-key', type: 'text' },
+    {
+      key: 'openaiModel',
+      type: 'model',
+      selectId: 'openai-model',
+      customInputId: 'openai-custom-model',
+      customGroupId: 'openai-custom-group',
+      defaultValue: 'gpt-4o-mini',
+    },
+  ]),
+  claude: Object.freeze([
+    { key: 'claudeKey', id: 'claude-key', type: 'text' },
+    {
+      key: 'claudeModel',
+      type: 'model',
+      selectId: 'claude-model',
+      customInputId: 'claude-custom-model',
+      customGroupId: 'claude-custom-group',
+      defaultValue: 'claude-3-5-haiku-20241022',
+    },
+  ]),
+  groq: Object.freeze([
+    { key: 'groqKey', id: 'groq-key', type: 'text' },
+    {
+      key: 'groqModel',
+      type: 'model',
+      selectId: 'groq-model',
+      customInputId: 'groq-custom-model',
+      customGroupId: 'groq-custom-group',
+      defaultValue: 'llama-3.1-70b-versatile',
+    },
+  ]),
+  gemini: Object.freeze([
+    { key: 'geminiKey', id: 'gemini-key', type: 'text' },
+    {
+      key: 'geminiModel',
+      type: 'model',
+      selectId: 'gemini-model',
+      customInputId: 'gemini-custom-model',
+      customGroupId: 'gemini-custom-group',
+      defaultValue: 'gemini-1.5-flash',
+    },
+  ]),
+  local: Object.freeze([
+    { key: 'localUrl', id: 'local-url', type: 'text' },
+    { key: 'localModel', id: 'local-model', type: 'text' },
+    { key: 'localApiFormat', id: 'local-api-format', type: 'text', defaultValue: 'auto' },
+    {
+      key: 'localStrictLoopback',
+      id: 'local-strict-loopback',
+      type: 'checkbox',
+      defaultValue: true,
+    },
+  ]),
+});
+
+const MODEL_FETCH_HANDLERS = Object.freeze({
+  'fetch-openai-models': fetchOpenAIModels,
+  'fetch-claude-models': fetchClaudeModels,
+  'fetch-groq-models': fetchGroqModels,
+  'fetch-gemini-models': fetchGeminiModels,
+});
+
+const STORAGE_KEYS = Object.freeze([
+  'enabled',
+  'defaultProvider',
+  'openaiKey',
+  'openaiModel',
+  'claudeKey',
+  'claudeModel',
+  'groqKey',
+  'groqModel',
+  'geminiKey',
+  'geminiModel',
+  'localUrl',
+  'localModel',
+  'localApiFormat',
+  'localStrictLoopback',
+  'localLoopbackUpgradeNoticeSeen',
+]);
 
 logger.log('Settings module loaded');
 
-// Initialize on DOM load
+function hasNonLoopbackLocalUrl(rawUrl) {
+  const value = String(rawUrl || '').trim();
+  if (!value) {
+    return false;
+  }
+
+  let parsed;
+  try {
+    parsed = new URL(value);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return false;
+  }
+
+  return !isLoopbackHostname(parsed.hostname);
+}
+
+function shouldShowLocalUpgradeWarning(provider, settings) {
+  if (provider !== 'local') {
+    return false;
+  }
+
+  if (settings.localLoopbackUpgradeNoticeSeen) {
+    return false;
+  }
+
+  const strictEnabled = isLoopbackRestrictionEnabled(settings.localStrictLoopback, true);
+  if (!strictEnabled) {
+    return false;
+  }
+
+  return hasNonLoopbackLocalUrl(settings.localUrl);
+}
+
+function setLocalUpgradeWarningVisibility(visible) {
+  const warning = document.getElementById('local-upgrade-warning');
+  if (!warning) {
+    return;
+  }
+
+  warning.classList.toggle('hidden', !visible);
+}
+
+function refreshLocalUpgradeWarning(provider) {
+  setLocalUpgradeWarningVisibility(shouldShowLocalUpgradeWarning(provider, currentSettings));
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   logger.log('DOMContentLoaded fired');
   try {
-    // Load cached models first
     await loadCachedModels();
     logger.log('Cached models loaded');
 
-    // Migrate any existing unencrypted API keys
     await secureStorage.migrateToEncrypted();
     logger.log('Migration complete');
 
-    // Load settings and setup
     await loadSettings();
     logger.log('Settings loaded');
+
     setupEventListeners();
     logger.log('Event listeners setup complete');
+
     setupChangelogModal();
     logger.log('Initialization complete');
   } catch (error) {
@@ -45,28 +179,94 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 });
 
-// Load saved settings
-async function loadSettings() {
-  const settings = await secureStorage.get([
-    'enabled',
-    'defaultProvider',
-    'openaiKey',
-    'openaiModel',
-    'claudeKey',
-    'claudeModel',
-    'localUrl',
-    'localModel',
-    'localApiFormat',
-    'groqKey',
-    'groqModel',
-    'geminiKey',
-    'geminiModel',
-  ]);
+function getBindings(provider) {
+  return PROVIDER_FORM_BINDINGS[provider] || [];
+}
 
-  // Set enabled toggle
+function readProviderSettingsFromForm(provider) {
+  const bindings = getBindings(provider);
+  const result = {};
+
+  bindings.forEach((binding) => {
+    if (binding.type === 'model') {
+      result[binding.key] = getModelValue(binding.selectId, binding.customInputId);
+      return;
+    }
+
+    const input = document.getElementById(binding.id);
+    if (!input) {
+      result[binding.key] = '';
+      return;
+    }
+
+    if (binding.type === 'checkbox') {
+      result[binding.key] = Boolean(input.checked);
+      return;
+    }
+
+    result[binding.key] = input.value.trim();
+  });
+
+  return result;
+}
+
+function readAllProviderSettingsFromForm() {
+  return PROVIDER_IDS.reduce((allSettings, provider) => {
+    return { ...allSettings, ...readProviderSettingsFromForm(provider) };
+  }, {});
+}
+
+function setProviderSettingsInForm(provider, settings) {
+  const bindings = getBindings(provider);
+
+  bindings.forEach((binding) => {
+    if (binding.type === 'model') {
+      const select = document.getElementById(binding.selectId);
+      const customInput = document.getElementById(binding.customInputId);
+      const customGroup = document.getElementById(binding.customGroupId);
+      const modelValue = settings[binding.key] || binding.defaultValue || '';
+
+      if (!select || !customInput || !customGroup) {
+        return;
+      }
+
+      if (isCustomModel(select, modelValue)) {
+        select.value = 'custom';
+        customInput.value = modelValue;
+        customGroup.classList.add('active');
+      } else {
+        select.value = modelValue;
+        customInput.value = '';
+        customGroup.classList.remove('active');
+      }
+      return;
+    }
+
+    const input = document.getElementById(binding.id);
+    if (input) {
+      if (binding.type === 'checkbox') {
+        input.checked = Boolean(settings[binding.key] ?? binding.defaultValue ?? false);
+      } else {
+        input.value = settings[binding.key] || binding.defaultValue || '';
+      }
+    }
+  });
+}
+
+function validateSettings(provider, settings) {
+  return validateProviderConfig(provider, settings);
+}
+
+async function loadSettings() {
+  const settings = await secureStorage.get(STORAGE_KEYS);
+  currentSettings = { ...settings };
+
   document.getElementById('enabled').checked = settings.enabled ?? false;
 
-  // Set provider selection (default to 'claude' for UI display only if none set)
+  Object.keys(PROVIDER_FORM_BINDINGS).forEach((provider) => {
+    setProviderSettingsInForm(provider, settings);
+  });
+
   const provider = settings.defaultProvider || 'claude';
   const providerRadio = document.querySelector(`input[name="provider"][value="${provider}"]`);
   if (providerRadio) {
@@ -74,253 +274,202 @@ async function loadSettings() {
     showProviderSettings(provider);
   }
 
-  // Set OpenAI settings
-  document.getElementById('openai-key').value = settings.openaiKey || '';
-  const openaiModel = settings.openaiModel || 'gpt-4o-mini';
-  const openaiSelect = document.getElementById('openai-model');
-  if (isCustomModel(openaiSelect, openaiModel)) {
-    openaiSelect.value = 'custom';
-    document.getElementById('openai-custom-model').value = openaiModel;
-    document.getElementById('openai-custom-group').classList.add('active');
-  } else {
-    openaiSelect.value = openaiModel;
-  }
-
-  // Set Claude settings
-  document.getElementById('claude-key').value = settings.claudeKey || '';
-  const claudeModel = settings.claudeModel || 'claude-3-5-haiku-20241022';
-  const claudeSelect = document.getElementById('claude-model');
-  if (isCustomModel(claudeSelect, claudeModel)) {
-    claudeSelect.value = 'custom';
-    document.getElementById('claude-custom-model').value = claudeModel;
-    document.getElementById('claude-custom-group').classList.add('active');
-  } else {
-    claudeSelect.value = claudeModel;
-  }
-
-  // Set Local LLM settings
-  document.getElementById('local-url').value = settings.localUrl || '';
-  document.getElementById('local-model').value = settings.localModel || '';
-  document.getElementById('local-api-format').value = settings.localApiFormat || 'openai';
-
-  // Set Groq settings
-  document.getElementById('groq-key').value = settings.groqKey || '';
-  const groqModel = settings.groqModel || 'llama-3.1-70b-versatile';
-  const groqSelect = document.getElementById('groq-model');
-  if (isCustomModel(groqSelect, groqModel)) {
-    groqSelect.value = 'custom';
-    document.getElementById('groq-custom-model').value = groqModel;
-    document.getElementById('groq-custom-group').classList.add('active');
-  } else {
-    groqSelect.value = groqModel;
-  }
-
-  // Set Gemini settings
-  document.getElementById('gemini-key').value = settings.geminiKey || '';
-  const geminiModel = settings.geminiModel || 'gemini-1.5-flash';
-  const geminiSelect = document.getElementById('gemini-model');
-  if (isCustomModel(geminiSelect, geminiModel)) {
-    geminiSelect.value = 'custom';
-    document.getElementById('gemini-custom-model').value = geminiModel;
-    document.getElementById('gemini-custom-group').classList.add('active');
-  } else {
-    geminiSelect.value = geminiModel;
-  }
-
-  // Update default provider UI - pass actual saved default, not the fallback
   updateDefaultProviderUI(settings.defaultProvider);
-
-  logger.log('loadSettings - defaultProvider:', settings.defaultProvider);
-
-  // Update enabled toggle state based on default provider
   updateEnabledToggleState(settings.defaultProvider);
+  logger.log('loadSettings - defaultProvider:', settings.defaultProvider);
 }
 
-// Setup event listeners
 function setupEventListeners() {
-  // Enable/Disable extension toggle
   document.getElementById('enabled').addEventListener('change', async (e) => {
     try {
       await secureStorage.set({ enabled: e.target.checked });
+      currentSettings = { ...currentSettings, enabled: e.target.checked };
       logger.log('Extension enabled state saved:', e.target.checked);
 
-      // Notify service worker about extension state change
       chrome.runtime
         .sendMessage({
           action: 'settingsSaved',
           enabled: e.target.checked,
         })
-        .catch(() => {}); // Ignore if service worker isn't running
+        .catch(() => {});
     } catch (error) {
       logger.error('Failed to save enabled state:', error);
     }
   });
 
-  // Provider selection
   document.querySelectorAll('input[name="provider"]').forEach((radio) => {
     radio.addEventListener('change', (e) => {
       showProviderSettings(e.target.value);
     });
   });
 
-  // Custom rules button
   document.getElementById('custom-rules-btn').addEventListener('click', () => {
     chrome.tabs.create({ url: chrome.runtime.getURL('settings/rules.html') });
   });
 
-  // Report issue button
   document.getElementById('report-issue-btn').addEventListener('click', () => {
     chrome.tabs.create({ url: GITHUB_ISSUES_URL });
   });
 
-  // OpenAI model selection - show/hide custom input
-  document.getElementById('openai-model').addEventListener('change', (e) => {
-    const customGroup = document.getElementById('openai-custom-group');
-    if (e.target.value === 'custom') {
-      customGroup.classList.add('active');
-    } else {
-      customGroup.classList.remove('active');
+  document.getElementById('allow-remote-local-url-btn')?.addEventListener('click', async () => {
+    try {
+      await secureStorage.set({
+        localStrictLoopback: false,
+        localLoopbackUpgradeNoticeSeen: true,
+      });
+      currentSettings = {
+        ...currentSettings,
+        localStrictLoopback: false,
+        localLoopbackUpgradeNoticeSeen: true,
+      };
+
+      const strictToggle = document.getElementById('local-strict-loopback');
+      if (strictToggle) {
+        strictToggle.checked = false;
+      }
+
+      refreshLocalUpgradeWarning('local');
+      updateDefaultButtonState('local');
+
+      chrome.runtime
+        .sendMessage({
+          action: 'settingsSaved',
+          provider: 'local',
+        })
+        .catch(() => {});
+
+      showStatus('Remote URL allowed. Local-Only URL Restriction is now disabled.', 'success');
+    } catch (error) {
+      logger.error('Failed to disable Local-Only URL Restriction:', error);
+      showStatus(`Failed to update Local LLM setting: ${error.message}`, 'error');
     }
   });
 
-  // Claude model selection - show/hide custom input
-  document.getElementById('claude-model').addEventListener('change', (e) => {
-    const customGroup = document.getElementById('claude-custom-group');
-    if (e.target.value === 'custom') {
-      customGroup.classList.add('active');
-    } else {
-      customGroup.classList.remove('active');
+  document.getElementById('keep-local-only-btn')?.addEventListener('click', async () => {
+    try {
+      await secureStorage.set({ localLoopbackUpgradeNoticeSeen: true });
+      currentSettings = {
+        ...currentSettings,
+        localLoopbackUpgradeNoticeSeen: true,
+      };
+      refreshLocalUpgradeWarning('local');
+    } catch (error) {
+      logger.error('Failed to dismiss Local LLM upgrade warning:', error);
+      showStatus(`Failed to dismiss warning: ${error.message}`, 'error');
     }
   });
 
-  // Fetch models buttons - pass showStatus as callback
-  document
-    .getElementById('fetch-openai-models')
-    .addEventListener('click', () => fetchOpenAIModels(showStatus));
-  document
-    .getElementById('fetch-claude-models')
-    .addEventListener('click', () => fetchClaudeModels(showStatus));
-  document
-    .getElementById('fetch-groq-models')
-    .addEventListener('click', () => fetchGroqModels(showStatus));
-  document
-    .getElementById('fetch-gemini-models')
-    .addEventListener('click', () => fetchGeminiModels(showStatus));
+  Object.values(PROVIDER_FORM_BINDINGS)
+    .flat()
+    .filter((binding) => binding.type === 'model')
+    .forEach((binding) => {
+      const select = document.getElementById(binding.selectId);
+      const customGroup = document.getElementById(binding.customGroupId);
+      if (!select || !customGroup) {
+        return;
+      }
 
-  // Save buttons (one in each provider form + legacy ID)
+      select.addEventListener('change', (e) => {
+        if (e.target.value === 'custom') {
+          customGroup.classList.add('active');
+        } else {
+          customGroup.classList.remove('active');
+        }
+      });
+    });
+
+  Object.entries(MODEL_FETCH_HANDLERS).forEach(([buttonId, handler]) => {
+    const button = document.getElementById(buttonId);
+    if (!button) {
+      return;
+    }
+
+    button.addEventListener('click', () => handler(showStatus));
+  });
+
   document.querySelectorAll('.save-btn, #save-btn').forEach((btn) => {
     btn.addEventListener('click', saveSettings);
   });
 
-  // Test buttons (one in each provider form + legacy ID)
   document.querySelectorAll('.test-btn, #test-btn').forEach((btn) => {
     btn.addEventListener('click', testConnection);
   });
 
-  // Make Default buttons
   document.querySelectorAll('.default-btn').forEach((btn) => {
     btn.addEventListener('click', (e) => {
-      const provider = e.target.dataset.provider;
-      makeProviderDefault(provider);
+      makeProviderDefault(e.target.dataset.provider);
     });
   });
 
-  // API key field listeners - update default button state when keys change
-  document
-    .getElementById('openai-key')
-    .addEventListener('input', () => updateDefaultButtonState('openai'));
-  document
-    .getElementById('claude-key')
-    .addEventListener('input', () => updateDefaultButtonState('claude'));
-  document
-    .getElementById('groq-key')
-    .addEventListener('input', () => updateDefaultButtonState('groq'));
-  document
-    .getElementById('gemini-key')
-    .addEventListener('input', () => updateDefaultButtonState('gemini'));
-  document
-    .getElementById('local-url')
-    .addEventListener('input', () => updateDefaultButtonState('local'));
-  document
-    .getElementById('local-model')
-    .addEventListener('input', () => updateDefaultButtonState('local'));
+  Object.entries(PROVIDER_FORM_BINDINGS).forEach(([provider, bindings]) => {
+    bindings.forEach((binding) => {
+      let inputIds = [];
+      if (binding.type === 'model') {
+        inputIds = [binding.selectId, binding.customInputId];
+      } else if (binding.id) {
+        inputIds = [binding.id];
+      }
 
-  // Listen for storage changes to sync with popup
+      inputIds.forEach((inputId) => {
+        const input = document.getElementById(inputId);
+        if (!input) {
+          return;
+        }
+
+        const eventName =
+          input.type === 'checkbox' || input.tagName === 'SELECT' ? 'change' : 'input';
+        input.addEventListener(eventName, () => updateDefaultButtonState(provider));
+      });
+    });
+  });
+
   chrome.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === 'sync' && changes.tabber && changes.tabber.newValue) {
       const newSettings = changes.tabber.newValue;
       if ('enabled' in newSettings) {
-        // Update toggle without triggering save
         const enabledToggle = document.getElementById('enabled');
         if (enabledToggle.checked !== newSettings.enabled) {
           enabledToggle.checked = newSettings.enabled;
           logger.log('Synced enabled state from storage:', newSettings.enabled);
         }
       }
+
+      currentSettings = { ...currentSettings, ...newSettings };
+      const activeProvider = document.querySelector('input[name="provider"]:checked')?.value;
+      refreshLocalUpgradeWarning(activeProvider);
     }
   });
 }
 
-// Show the settings section for the selected provider
 function showProviderSettings(provider) {
   logger.log('Switching to provider:', provider);
 
-  // Hide all provider settings
   document.querySelectorAll('.provider-settings').forEach((section) => {
     section.classList.remove('active');
   });
 
-  // Show the selected provider settings
   const settingsSection = document.getElementById(`${provider}-settings`);
   if (settingsSection) {
     settingsSection.classList.add('active');
-
-    // Load cached models if available
     logger.log('Loading cached models for:', provider);
     loadCachedModelsForProvider(provider);
   }
+
+  refreshLocalUpgradeWarning(provider);
 }
 
-// Save settings to Chrome storage
 async function saveSettings() {
   const provider = document.querySelector('input[name="provider"]:checked')?.value;
-
   if (!provider) {
     showStatus('Please select a provider first', 'error');
     return;
   }
 
-  // Build settings object with only the selected provider's settings
   const settings = {
     enabled: document.getElementById('enabled').checked,
+    ...readProviderSettingsFromForm(provider),
   };
 
-  // Only save settings for the selected provider
-  switch (provider) {
-    case 'openai':
-      settings.openaiKey = document.getElementById('openai-key').value.trim();
-      settings.openaiModel = getModelValue('openai-model', 'openai-custom-model');
-      break;
-    case 'claude':
-      settings.claudeKey = document.getElementById('claude-key').value.trim();
-      settings.claudeModel = getModelValue('claude-model', 'claude-custom-model');
-      break;
-    case 'local':
-      settings.localUrl = document.getElementById('local-url').value.trim();
-      settings.localModel = document.getElementById('local-model').value.trim();
-      settings.localApiFormat = document.getElementById('local-api-format').value;
-      break;
-    case 'groq':
-      settings.groqKey = document.getElementById('groq-key').value.trim();
-      settings.groqModel = getModelValue('groq-model', 'groq-custom-model');
-      break;
-    case 'gemini':
-      settings.geminiKey = document.getElementById('gemini-key').value.trim();
-      settings.geminiModel = getModelValue('gemini-model', 'gemini-custom-model');
-      break;
-  }
-
-  // Validate required fields for the selected provider
   const validation = validateSettings(provider, settings);
   if (!validation.valid) {
     showStatus(validation.message, 'error');
@@ -329,19 +478,19 @@ async function saveSettings() {
 
   try {
     await secureStorage.set(settings);
-
+    currentSettings = { ...currentSettings, ...settings };
     logger.log(`Saved settings for ${provider.toUpperCase()}`);
 
-    // Update the default button state for this provider (in case credentials were added)
     updateDefaultButtonState(provider);
+    refreshLocalUpgradeWarning(provider);
 
-    // Notify service worker about settings update
     chrome.runtime
       .sendMessage({
         action: 'settingsSaved',
-        provider: provider,
+        provider,
       })
-      .catch(() => {}); // Ignore if service worker isn't running
+      .catch(() => {});
+
     showStatus(
       `${provider.charAt(0).toUpperCase() + provider.slice(1)} settings saved!`,
       'success'
@@ -352,67 +501,18 @@ async function saveSettings() {
   }
 }
 
-// Validate settings for a provider
-function validateSettings(provider, settings) {
-  switch (provider) {
-    case 'openai':
-      if (!settings.openaiKey) {
-        return { valid: false, message: 'Please enter your OpenAI API key' };
-      }
-      break;
-    case 'claude':
-      if (!settings.claudeKey) {
-        return { valid: false, message: 'Please enter your Claude API key' };
-      }
-      break;
-    case 'local':
-      if (!settings.localUrl) {
-        return { valid: false, message: 'Please enter your local LLM server URL' };
-      }
-      if (!settings.localModel) {
-        return { valid: false, message: 'Please enter your local LLM model name' };
-      }
-      break;
-    case 'groq':
-      if (!settings.groqKey) {
-        return { valid: false, message: 'Please enter your Groq API key' };
-      }
-      break;
-    case 'gemini':
-      if (!settings.geminiKey) {
-        return { valid: false, message: 'Please enter your Google Gemini API key' };
-      }
-      break;
-  }
-  return { valid: true };
-}
-
-// Test connection to the selected AI provider
 async function testConnection() {
   const provider = document.querySelector('input[name="provider"]:checked')?.value;
-
   if (!provider) {
     showStatus('Please select an AI provider first', 'error');
     return;
   }
 
-  // Get current form values (not saved settings)
   const testConfig = {
-    provider: provider,
-    openaiKey: document.getElementById('openai-key').value.trim(),
-    openaiModel: getModelValue('openai-model', 'openai-custom-model'),
-    claudeKey: document.getElementById('claude-key').value.trim(),
-    claudeModel: getModelValue('claude-model', 'claude-custom-model'),
-    localUrl: document.getElementById('local-url').value.trim(),
-    localModel: document.getElementById('local-model').value.trim(),
-    localApiFormat: document.getElementById('local-api-format').value,
-    groqKey: document.getElementById('groq-key').value.trim(),
-    groqModel: getModelValue('groq-model', 'groq-custom-model'),
-    geminiKey: document.getElementById('gemini-key').value.trim(),
-    geminiModel: getModelValue('gemini-model', 'gemini-custom-model'),
+    provider,
+    ...readAllProviderSettingsFromForm(),
   };
 
-  // Validate the current provider has required fields
   const validation = validateSettings(provider, testConfig);
   if (!validation.valid) {
     showStatus(validation.message, 'error');
@@ -420,7 +520,6 @@ async function testConnection() {
   }
 
   showStatus('Testing connection...', 'info');
-
   logger.log(`Testing connection for ${provider.toUpperCase()} provider`);
 
   try {
@@ -440,9 +539,7 @@ async function testConnection() {
   }
 }
 
-// Show status message (updates all status elements)
 function showStatus(message, type) {
-  // Update the active provider's status element
   const activeSettings = document.querySelector('.provider-settings.active');
   const statusElements = activeSettings
     ? activeSettings.querySelectorAll('.status')
@@ -454,62 +551,33 @@ function showStatus(message, type) {
   });
 }
 
-// Make a provider the default
 async function makeProviderDefault(provider) {
   try {
-    // Build settings object with only the default provider and its specific settings
-    const settings = { defaultProvider: provider };
+    const settings = {
+      defaultProvider: provider,
+      ...readProviderSettingsFromForm(provider),
+    };
 
-    // Only save settings for the selected provider
-    switch (provider) {
-      case 'openai':
-        settings.openaiKey = document.getElementById('openai-key').value.trim();
-        settings.openaiModel = getModelValue('openai-model', 'openai-custom-model');
-        break;
-      case 'claude':
-        settings.claudeKey = document.getElementById('claude-key').value.trim();
-        settings.claudeModel = getModelValue('claude-model', 'claude-custom-model');
-        break;
-      case 'local':
-        settings.localUrl = document.getElementById('local-url').value.trim();
-        settings.localModel = document.getElementById('local-model').value.trim();
-        settings.localApiFormat = document.getElementById('local-api-format').value;
-        break;
-      case 'groq':
-        settings.groqKey = document.getElementById('groq-key').value.trim();
-        settings.groqModel = getModelValue('groq-model', 'groq-custom-model');
-        break;
-      case 'gemini':
-        settings.geminiKey = document.getElementById('gemini-key').value.trim();
-        settings.geminiModel = getModelValue('gemini-model', 'gemini-custom-model');
-        break;
-    }
-
-    // Validate the provider has required fields
     const validation = validateSettings(provider, settings);
     if (!validation.valid) {
       showStatus(validation.message, 'error');
       return;
     }
 
-    // Save only the default provider and its settings
     await secureStorage.set(settings);
-
+    currentSettings = { ...currentSettings, ...settings };
     logger.log(`Set ${provider.toUpperCase()} as default provider (with settings saved)`);
 
-    // Update UI to show which is default
     updateDefaultProviderUI(provider);
-
-    // Update enabled toggle state
     updateEnabledToggleState(provider);
+    refreshLocalUpgradeWarning(provider);
 
-    // Notify service worker about default provider change
     chrome.runtime
       .sendMessage({
         action: 'settingsSaved',
-        provider: provider,
+        provider,
       })
-      .catch(() => {}); // Ignore if service worker isn't running
+      .catch(() => {});
 
     showStatus(
       `✓ ${provider.charAt(0).toUpperCase() + provider.slice(1)} set as default provider!`,
@@ -521,53 +589,35 @@ async function makeProviderDefault(provider) {
   }
 }
 
-// Update UI to show which provider is default
 function updateDefaultProviderUI(currentDefault) {
   document.querySelectorAll('.default-btn').forEach((btn) => {
     const provider = btn.dataset.provider;
     const hasCredentials = providerHasCredentials(provider);
 
     if (currentDefault && provider === currentDefault) {
-      // Replace button with green label for current default
       btn.textContent = '⭐ Default Provider';
       btn.disabled = false;
       btn.classList.add('active');
-      btn.style.pointerEvents = 'none'; // Prevent clicking
+      btn.style.pointerEvents = 'none';
     } else {
-      // Show as regular button
       btn.textContent = '⭐ Make Default';
       btn.disabled = !hasCredentials;
       btn.classList.remove('active');
-      btn.style.pointerEvents = 'auto'; // Allow clicking
+      btn.style.pointerEvents = 'auto';
     }
   });
 }
 
-// Check if a provider has the required credentials
 function providerHasCredentials(provider) {
-  switch (provider) {
-    case 'openai':
-      return document.getElementById('openai-key').value.trim() !== '';
-    case 'claude':
-      return document.getElementById('claude-key').value.trim() !== '';
-    case 'groq':
-      return document.getElementById('groq-key').value.trim() !== '';
-    case 'gemini':
-      return document.getElementById('gemini-key').value.trim() !== '';
-    case 'local':
-      return (
-        document.getElementById('local-url').value.trim() !== '' &&
-        document.getElementById('local-model').value.trim() !== ''
-      );
-    default:
-      return false;
-  }
+  const values = readProviderSettingsFromForm(provider);
+  return validateSettings(provider, values).valid;
 }
 
-// Update default button state for a specific provider
 function updateDefaultButtonState(provider) {
   const btn = document.querySelector(`.default-btn[data-provider="${provider}"]`);
-  if (!btn) return;
+  if (!btn) {
+    return;
+  }
 
   const hasCredentials = providerHasCredentials(provider);
   const isCurrentDefault = btn.classList.contains('active');
@@ -577,11 +627,10 @@ function updateDefaultButtonState(provider) {
   }
 }
 
-// Update enabled toggle state based on default provider
 function updateEnabledToggleState(defaultProvider) {
   const enabledToggle = document.getElementById('enabled');
   const warningMessage = document.getElementById('no-provider-warning');
-  const switchElement = enabledToggle.parentElement; // The switch label
+  const switchElement = enabledToggle.parentElement;
 
   logger.log(
     'updateEnabledToggleState - defaultProvider:',
@@ -591,7 +640,6 @@ function updateEnabledToggleState(defaultProvider) {
   );
 
   if (!defaultProvider) {
-    // No default provider - disable toggle and show warning
     logger.log('No default provider - disabling toggle');
     enabledToggle.disabled = true;
     enabledToggle.checked = false;
@@ -599,7 +647,6 @@ function updateEnabledToggleState(defaultProvider) {
     switchElement.style.cursor = 'not-allowed';
     warningMessage.classList.remove('hidden');
   } else {
-    // Default provider exists - enable toggle
     logger.log('Default provider exists - enabling toggle');
     enabledToggle.disabled = false;
     switchElement.style.opacity = '1';

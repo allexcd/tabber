@@ -1,0 +1,147 @@
+/* Custom Grouping Rules */
+#custom-rules-section {
+  margin-top: 0;
+}
+
+.rules-header {
+  margin-bottom: 1.25rem;
+}
+
+.rules-actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.rules-actions .btn {
+  flex: 0 0 auto;
+}
+
+.btn.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.inline-code {
+  background: rgb(0, 0, 0, 0.3);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  font-family: 'Monaco', 'Menlo', monospace;
+  font-size: 0.8em;
+  color: #fbbf24;
+}
+
+#rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.rule-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  background: rgb(0, 0, 0, 0.2);
+  border: 1px solid rgb(255, 255, 255, 0.1);
+  border-radius: 8px;
+}
+
+.rule-row .rule-pattern {
+  flex: 2;
+  padding: 0.5rem 0.75rem;
+  background: rgb(0, 0, 0, 0.3);
+  border: 1px solid rgb(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #f4f4f5;
+  font-size: 0.85rem;
+}
+
+.rule-row .rule-group-name {
+  flex: 1.5;
+  padding: 0.5rem 0.75rem;
+  background: rgb(0, 0, 0, 0.3);
+  border: 1px solid rgb(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #f4f4f5;
+  font-size: 0.85rem;
+}
+
+.rule-row .rule-color {
+  flex: 0 0 auto;
+  width: 90px;
+  padding: 0.5rem;
+  background: rgb(0, 0, 0, 0.3);
+  border: 1px solid rgb(255, 255, 255, 0.15);
+  border-radius: 6px;
+  color: #f4f4f5;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.rule-row .rule-color option {
+  background: #1a1a2e;
+}
+
+.rule-row .rule-pattern:focus,
+.rule-row .rule-group-name:focus,
+.rule-row .rule-color:focus {
+  outline: none;
+  border-color: #6366f1;
+}
+
+.rule-row .rule-pattern::placeholder,
+.rule-row .rule-group-name::placeholder {
+  color: #52525b;
+}
+
+.rule-row .rule-switch {
+  flex: 0 0 auto;
+}
+
+.btn.icon-btn {
+  flex: 0 0 auto;
+  padding: 0.5rem 0.6rem;
+  background: rgb(255, 255, 255, 0.06);
+  border: 1px solid rgb(255, 255, 255, 0.12);
+  color: #a1a1aa;
+  font-size: 0.85rem;
+  min-width: auto;
+}
+
+.btn.icon-btn:hover {
+  background: rgb(255, 255, 255, 0.12);
+  color: #e4e4e7;
+}
+
+.btn.danger {
+  flex: 0 0 auto;
+  padding: 0.5rem 0.75rem;
+  background: rgb(239, 68, 68, 0.15);
+  border: 1px solid rgb(239, 68, 68, 0.3);
+  color: #f87171;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-width: auto;
+}
+
+.btn.danger:hover {
+  background: rgb(239, 68, 68, 0.25);
+}
+
+@media (max-width: 768px) {
+  .rule-row {
+    flex-wrap: wrap;
+  }
+
+  .rule-row .rule-pattern,
+  .rule-row .rule-group-name {
+    flex: 1 1 100%;
+  }
+
+  .rule-row .rule-color {
+    flex: 1;
+  }
+}

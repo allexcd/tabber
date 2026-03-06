@@ -1,0 +1,155 @@
+/* Footer */
+footer {
+  text-align: center;
+  margin-top: 0.75rem;
+  color: #52525b;
+  font-size: 0.72rem;
+}
+
+@media (min-width: 1200px) {
+  #local-settings.active {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem 1rem;
+    align-items: start;
+  }
+
+  #local-settings.active > h2 {
+    grid-column: 1 / -1;
+    margin-bottom: 0;
+  }
+
+  #local-settings.active > .compact-full-width {
+    grid-column: 1 / -1;
+  }
+
+  #local-settings.active > .compact-half {
+    grid-column: auto;
+  }
+
+  #local-settings.active .form-group {
+    margin-bottom: 0;
+  }
+
+  #local-settings.active .form-actions {
+    margin-top: 0.25rem;
+  }
+}
+
+@media (max-height: 960px) and (min-width: 1025px) {
+  .container {
+    padding: 0.6rem;
+  }
+
+  header {
+    margin-bottom: 0.55rem;
+  }
+
+  header h1 {
+    font-size: 1.6rem;
+    margin-bottom: 0.2rem;
+  }
+
+  .subtitle {
+    display: none;
+  }
+
+  .header-action-btn {
+    font-size: 0.74rem;
+    padding: 0.35rem 0.55rem;
+  }
+
+  .icon-button {
+    width: 32px;
+    height: 32px;
+    font-size: 0.9rem;
+  }
+
+  .layout-container {
+    gap: 0.8rem;
+  }
+
+  .left-column {
+    top: 0.6rem;
+    gap: 0.6rem;
+  }
+
+  .card {
+    padding: 0.8rem;
+  }
+
+  .provider-card {
+    padding: 0.68rem;
+  }
+
+  .form-group {
+    margin-bottom: 0.7rem;
+  }
+
+  .form-group input,
+  .form-group select {
+    padding: 0.55rem 0.75rem;
+  }
+
+  .hint {
+    font-size: 0.67rem;
+    margin-top: 0.25rem;
+  }
+
+  .provider-desc {
+    display: none;
+  }
+
+  #local-settings .form-group .hint {
+    display: none;
+  }
+
+  .local-model-guidance .hint:last-child {
+    display: none;
+  }
+
+  .setup-note {
+    margin-top: 0.55rem;
+  }
+
+  .setup-note li {
+    margin-bottom: 0.25rem;
+    font-size: 0.74rem;
+  }
+
+  .form-actions {
+    margin-top: 0.7rem;
+    padding-top: 0.7rem;
+    gap: 0.55rem;
+  }
+
+  .btn {
+    padding: 0.62rem 0.9rem;
+  }
+
+  footer {
+    display: none;
+  }
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+  .provider-options {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-card {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .provider-icon {
+    margin-bottom: 0;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+}

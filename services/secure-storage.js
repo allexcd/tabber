@@ -199,6 +199,8 @@ export class SecureStorage {
         'localUrl',
         'localModel',
         'localApiFormat',
+        'localStrictLoopback',
+        'localLoopbackUpgradeNoticeSeen',
       ];
 
       this.storage.get([STORAGE_KEY, ...oldKeys], async (result) => {
