@@ -1,6 +1,6 @@
 # Privacy Policy for AI Tab Grouper
 
-**Last updated: January 29, 2026**
+**Last updated: March 6, 2026**
 
 ## Overview
 
@@ -11,13 +11,13 @@ AI Tab Grouper ("the Extension") is a Chrome browser extension that uses artific
 ### What Data We Access
 
 - **Tab Information**: Tab titles and URLs from your active browsing sessions
-- **API Keys**: Your AI provider API keys (OpenAI, Claude, Groq, Gemini)
+- **API Keys**: Your cloud provider API keys (OpenAI, Claude, Groq, Gemini)
 - **Settings**: Your extension preferences and configuration
 
 ### How We Use Your Data
 
 1. **Tab Processing**: Tab titles and URLs are processed to generate intelligent grouping decisions
-2. **AI Provider Communication**: Sanitized tab data is sent to your chosen AI provider (OpenAI, Claude, Groq, Google Gemini, or Local LLM)
+2. **AI Provider Communication**: Sanitized tab data is sent to your chosen AI provider (OpenAI, Claude, Groq, Google Gemini) or to your local model provider (Local LLM)
 3. **Settings Storage**: Your preferences are stored locally in Chrome's secure storage
 
 ### Data Protection
@@ -42,7 +42,7 @@ When you use the extension, sanitized tab data (titles and cleaned URLs) is sent
 - **Anthropic**: If you choose Claude as your provider
 - **Groq**: If you choose Groq as your provider
 - **Google**: If you choose Gemini as your provider
-- **Local LLM**: If you use a local AI server, data stays on your machine
+- **Local LLM**: Supports Ollama, LM Studio, and OpenAI-compatible local servers; loopback URL restriction is enabled by default and can be disabled in settings
 
 Each provider has their own privacy policies governing their use of data.
 
@@ -55,7 +55,7 @@ Each provider has their own privacy policies governing their use of data.
 ## Your Privacy Rights
 
 - **Control**: You control which AI provider to use
-- **Local-Only Option**: Choose "Local LLM" to keep all data on your machine
+- **Local-Only Option**: Choose "Local LLM" and keep loopback-only URL restriction enabled to keep data on your machine
 - **Data Deletion**: Uninstalling the extension removes all stored data
 - **Selective Processing**: Enable/disable the extension at any time
 
@@ -71,6 +71,7 @@ Each provider has their own privacy policies governing their use of data.
 - **HTTPS Communication**: All AI provider communications use HTTPS
 - **Minimal Data**: Only necessary tab information is processed
 - **Device-Bound Keys**: Encryption keys are unique to your browser installation
+- **Loopback Guard**: Local LLM URLs are restricted to localhost/loopback hosts by default (optional override in settings)
 
 ## Children's Privacy
 

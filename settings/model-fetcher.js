@@ -1,17 +1,55 @@
 // Model Fetcher Module
-// Handles fetching models from AI provider APIs via the background service worker
+// Handles fetching models from provider APIs via the background service worker.
 
 import { cachedModels, saveCachedModels } from './model-cache.js';
+import { getProviderDefinition } from '../services/provider-metadata.js';
 
-// Send a fetch request to the background worker and update the UI
-async function fetchModels({ provider, apiKeyId, btnId, selectId, providerLabel, showStatus }) {
-  const apiKey = document.getElementById(apiKeyId).value.trim();
+function populateModelSelect(select, models, currentValue) {
+  select.innerHTML = '';
+
+  models.forEach((model) => {
+    const option = document.createElement('option');
+    option.value = model.id;
+    option.textContent = model.displayName;
+    select.appendChild(option);
+  });
+
+  const customOption = document.createElement('option');
+  customOption.value = 'custom';
+  customOption.textContent = 'Custom Model...';
+  select.appendChild(customOption);
+
+  const modelIds = models.map((model) => model.id);
+  if (modelIds.includes(currentValue)) {
+    select.value = currentValue;
+  } else if (models.length > 0) {
+    select.value = models[0].id;
+  }
+}
+
+async function fetchModels({
+  provider,
+  credentialInputId,
+  btnId,
+  selectId,
+  providerLabel,
+  showStatus,
+}) {
+  const definition = getProviderDefinition(provider);
+  if (!definition) {
+    showStatus(`Unknown provider: ${provider}`, 'error');
+    return;
+  }
+
   const btn = document.getElementById(btnId);
   const select = document.getElementById(selectId);
   const currentValue = select.value;
+  const credentialInput = credentialInputId ? document.getElementById(credentialInputId) : null;
+  const credential = credentialInput ? credentialInput.value.trim() : '';
 
-  if (!apiKey) {
-    showStatus(`Please enter your ${providerLabel} API key first`, 'error');
+  if (definition.modelFetchRequiresCredential && !credential) {
+    const label = definition.modelFetchCredentialLabel || `${providerLabel} credential`;
+    showStatus(`Please enter your ${label} first`, 'error');
     return;
   }
 
@@ -21,8 +59,8 @@ async function fetchModels({ provider, apiKeyId, btnId, selectId, providerLabel,
   try {
     const result = await chrome.runtime.sendMessage({
       action: 'fetchModels',
-      provider: provider,
-      apiKey: apiKey,
+      provider,
+      credential,
     });
 
     if (!result.success) {
@@ -30,35 +68,10 @@ async function fetchModels({ provider, apiKeyId, btnId, selectId, providerLabel,
     }
 
     const models = result.models;
-
-    // Cache the models
     cachedModels[provider] = models;
     await saveCachedModels();
 
-    // Clear and repopulate select
-    select.innerHTML = '';
-
-    models.forEach((model) => {
-      const option = document.createElement('option');
-      option.value = model.id;
-      option.textContent = model.displayName;
-      select.appendChild(option);
-    });
-
-    // Add custom option at the end
-    const customOption = document.createElement('option');
-    customOption.value = 'custom';
-    customOption.textContent = 'Custom Model...';
-    select.appendChild(customOption);
-
-    // Restore previous selection if it exists, otherwise select first
-    const modelIds = models.map((m) => m.id);
-    if (modelIds.includes(currentValue)) {
-      select.value = currentValue;
-    } else if (models.length > 0) {
-      select.value = models[0].id;
-    }
-
+    populateModelSelect(select, models, currentValue);
     showStatus(`✓ Loaded ${models.length} models from ${providerLabel}`, 'success');
   } catch (error) {
     showStatus(`Failed to fetch models: ${error.message}`, 'error');
@@ -68,11 +81,10 @@ async function fetchModels({ provider, apiKeyId, btnId, selectId, providerLabel,
   }
 }
 
-// Fetch available models from OpenAI API
 export async function fetchOpenAIModels(showStatus) {
   return fetchModels({
     provider: 'openai',
-    apiKeyId: 'openai-key',
+    credentialInputId: 'openai-key',
     btnId: 'fetch-openai-models',
     selectId: 'openai-model',
     providerLabel: 'OpenAI',
@@ -80,11 +92,10 @@ export async function fetchOpenAIModels(showStatus) {
   });
 }
 
-// Fetch available models from Claude/Anthropic API
 export async function fetchClaudeModels(showStatus) {
   return fetchModels({
     provider: 'claude',
-    apiKeyId: 'claude-key',
+    credentialInputId: 'claude-key',
     btnId: 'fetch-claude-models',
     selectId: 'claude-model',
     providerLabel: 'Anthropic',
@@ -92,11 +103,10 @@ export async function fetchClaudeModels(showStatus) {
   });
 }
 
-// Fetch available models from Groq API
 export async function fetchGroqModels(showStatus) {
   return fetchModels({
     provider: 'groq',
-    apiKeyId: 'groq-key',
+    credentialInputId: 'groq-key',
     btnId: 'fetch-groq-models',
     selectId: 'groq-model',
     providerLabel: 'Groq',
@@ -104,11 +114,10 @@ export async function fetchGroqModels(showStatus) {
   });
 }
 
-// Fetch available models from Google Gemini API
 export async function fetchGeminiModels(showStatus) {
   return fetchModels({
     provider: 'gemini',
-    apiKeyId: 'gemini-key',
+    credentialInputId: 'gemini-key',
     btnId: 'fetch-gemini-models',
     selectId: 'gemini-model',
     providerLabel: 'Google AI',

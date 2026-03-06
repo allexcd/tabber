@@ -3,6 +3,7 @@
 import { secureStorage } from '../services/secure-storage.js';
 import { logger } from '../services/logger.js';
 import { detectBrowserInfo } from '../services/browser-info.js';
+import { getProviderStatusLabel, isProviderConfigured } from '../services/provider-metadata.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   loadStatus();
@@ -138,6 +139,7 @@ async function loadStatusFallback() {
     'geminiKey',
     'localUrl',
     'localModel',
+    'localStrictLoopback',
   ]);
 
   logger.log('loadStatusFallback - settings:', settings);
@@ -215,18 +217,7 @@ async function loadStatusFallback() {
 
 // Check if a provider is properly configured (fallback method)
 function checkConfiguration(settings) {
-  const provider = settings.defaultProvider;
-  if (!provider) return false;
-
-  // For encrypted keys, just check if they exist and are non-empty
-  // The actual validation happens in the background service
-  if (provider === 'openai' && settings.openaiKey && settings.openaiKey.trim()) return true;
-  if (provider === 'claude' && settings.claudeKey && settings.claudeKey.trim()) return true;
-  if (provider === 'groq' && settings.groqKey && settings.groqKey.trim()) return true;
-  if (provider === 'gemini' && settings.geminiKey && settings.geminiKey.trim()) return true;
-  if (provider === 'local' && settings.localUrl && settings.localModel) return true;
-
-  return false;
+  return isProviderConfigured(settings.defaultProvider, settings);
 }
 
 async function getBrowserInfoFromBackground() {
@@ -288,14 +279,7 @@ function resolveBrowserInfo(backgroundInfo) {
 
 // Get human-readable provider name
 function getProviderName(provider) {
-  const names = {
-    openai: 'Using OpenAI',
-    claude: 'Using Claude',
-    groq: 'Using Groq',
-    gemini: 'Using Gemini',
-    local: 'Using Local LLM',
-  };
-  return names[provider] || 'Unknown provider';
+  return getProviderStatusLabel(provider);
 }
 
 // Setup event listeners

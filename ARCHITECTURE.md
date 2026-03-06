@@ -97,7 +97,7 @@ sequenceDiagram
 
   UI->>BG: chrome.runtime.sendMessage(...)
   BG->>AI: getGroupingDecision/getBatchGroupingPlan/listModels
-  AI->>P: complete(prompt) or listModels(apiKey)
+  AI->>P: complete(prompt) or listModels(credential)
   P->>API: fetch(...)
   API-->>P: JSON response
   P-->>AI: normalized content
@@ -130,6 +130,7 @@ Key points:
 flowchart LR
   BG["background.js"] --> AIS["services/ai-service.js"]
   BG --> SS["services/secure-storage.js"]
+  BG --> PM["services/provider-metadata.js"]
   BG --> BI["services/browser-info.js"]
   BG --> LOG["services/logger.js"]
 
@@ -141,13 +142,18 @@ flowchart LR
   AIS --> SAN["services/sanitizer.js"]
   AIS --> SS
 
+  PM --> LUG["services/local-url-guard.js"]
+  LL --> LUG
+
   SS --> CR["services/crypto.js"]
 
   SET["settings/settings.js"] --> MF["settings/model-fetcher.js"]
   SET --> MC["settings/model-cache.js"]
+  SET --> PM
   SET --> SS
 
   POP["popup/popup.js"] --> SS
+  POP --> PM
   POP --> LOG
 ```
 
@@ -174,10 +180,11 @@ All extension data is stored under a unified `tabber` key namespace.
   groqModel: string,
   geminiModel: string,
 
-  // Local model config
+  // Local model config (Ollama/LM Studio/OpenAI-compatible endpoint)
   localUrl: string,
   localModel: string,
-  localApiFormat: "openai" | "ollama"
+  localApiFormat: "auto" | "openai" | "ollama",
+  localStrictLoopback: boolean
 }
 ```
 

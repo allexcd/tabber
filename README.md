@@ -11,7 +11,7 @@
 - **🆓 Free Options**: Groq and Google Gemini offer generous free tiers
 - **🎨 Smart Color Coding**: Semantic colors (blue=dev, green=finance, red=entertainment)
 - **⚡ Real-time**: Auto-groups new tabs as they load
-- **🔄 Dynamic Models**: Fetch latest models via API for all providers
+- **🔄 Dynamic Models**: Fetch latest models via API for supported cloud providers
 - **🔧 Custom Models**: Use any model name for bleeding-edge access
 - **🔒 Secure**: AES-256-GCM encrypted API keys, PII sanitization
 
@@ -32,7 +32,7 @@ Coming soon...
 ## Quick Start
 
 1. Click extension icon → **Settings**
-2. Select AI provider and enter API key
+2. Select AI provider and enter API key (or local server config)
 3. Click **🔄 Fetch** to load available models (optional)
 4. Save and enable extension
 
@@ -101,9 +101,10 @@ With this setup, GitHub PR tabs go to "PRs", other GitHub tabs go to "Code", You
 
 ### Local LLM
 
-- **Server**: Ollama (`http://localhost:11434`) or LM Studio (`http://localhost:1234`)
+- **Server**: Ollama, LM Studio, or OpenAI-compatible local endpoint
 - **LM Studio**: Enable CORS in Developer settings
-- **Format**: OpenAI Compatible or Ollama Native
+- **Format**: Auto-detect, OpenAI-compatible, or Ollama-native
+- **Security**: Loopback-only URL restriction is enabled by default (`localhost`, `127.0.0.1`, `[::1]`) and can be disabled if you intentionally use a remote endpoint
 
 ## Privacy & Security
 
@@ -128,7 +129,7 @@ Before sending to AI, sensitive data is automatically redacted:
 - All API calls use HTTPS
 - Only tab titles and sanitized URLs sent to AI
 - No data stored on external servers
-- **Local LLM option** for maximum privacy (data never leaves your machine)
+- **Local provider option** (Local LLM) for maximum privacy when loopback-only mode is enabled
 
 For complete privacy details, see [PRIVACY.md](PRIVACY.md).
 
@@ -141,7 +142,7 @@ Settings Page
     ↓ chrome.runtime.sendMessage (no direct API calls)
 Background Worker
     ↓ AI Service
-Provider Classes (openai.js, claude.js, etc.)
+Provider Classes (openai.js, claude.js, local-llm.js, etc.)
     ↓ fetch() — all HTTP requests here
 External APIs
 ```
@@ -162,12 +163,18 @@ Tabber/
 ├── popup/                  # Toolbar popup UI
 ├── settings/               # Options page
 │   ├── settings.js         # Settings orchestration
+│   ├── settings.css        # Settings stylesheet entrypoint
 │   ├── rules.html          # Custom grouping rules page
 │   ├── rules.js            # Custom grouping rules UI logic
 │   ├── model-fetcher.js    # Dynamic model fetching via message passing
 │   ├── model-cache.js      # Model caching
 │   ├── changelog.js        # Version history modal
-│   └── settings-fallback.js # Settings fallback handling
+│   ├── settings-fallback.js # Settings fallback handling
+│   └── styles/             # Modular settings stylesheets
+│       ├── base.css
+│       ├── providers-forms.css
+│       ├── rules.css
+│       └── responsive.css
 ├── services/               # Core services & providers
 │   ├── ai-service.js       # Unified AI interface
 │   ├── rules-service.js    # Custom rule matching logic
@@ -175,7 +182,9 @@ Tabber/
 │   ├── claude.js           # Claude provider (complete + listModels)
 │   ├── groq.js             # Groq provider (complete + listModels)
 │   ├── gemini.js           # Gemini provider (complete + listModels)
-│   ├── local-llm.js        # Local LLM provider
+│   ├── local-llm.js        # Unified local provider (Ollama/LM Studio/OpenAI-compatible)
+│   ├── provider-metadata.js # Shared provider definitions/validation
+│   ├── local-url-guard.js  # Local loopback URL validation
 │   ├── sanitizer.js        # PII removal
 │   ├── crypto.js           # AES-256-GCM encryption
 │   ├── secure-storage.js   # Encrypted storage wrapper
@@ -248,7 +257,7 @@ Every feature branch requires a changeset before pushing. A changeset documents 
 npm run changeset          # Interactive prompt for type + description
 ```
 
-This generates a `.changeset/<timestamp>-<slug>.md` file, stages it, and commits it. The pre-push hook blocks pushes without a changeset. To skip in exceptional cases: `git push --no-verify`.
+This generates a `.changeset/<random-slug>.md` file, stages it, and commits it. The pre-push hook blocks pushes without a changeset. To skip in exceptional cases: `git push --no-verify`.
 
 ## Contributing
 

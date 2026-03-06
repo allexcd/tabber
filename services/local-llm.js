@@ -1,6 +1,11 @@
-// Local LLM Provider (Ollama, LM Studio, etc.)
+// Local LLM Provider (Ollama, LM Studio, LocalAI, and OpenAI-compatible local endpoints)
 
 import { secureStorage } from './secure-storage.js';
+import {
+  isLoopbackRestrictionEnabled,
+  validateHttpUrl,
+  validateLoopbackHttpUrl,
+} from './local-url-guard.js';
 
 const JSON_ONLY_SYSTEM_PROMPT =
   'You organize browser tabs into groups. Return exactly one JSON object. No markdown. No prose.';
@@ -39,9 +44,25 @@ function isUnsupportedJsonModeResponse(statusCode, rawText) {
   );
 }
 
+function shouldTryOtherFormat(error) {
+  const message = String(error?.message || '').toLowerCase();
+  return (
+    message.includes('404') ||
+    message.includes('not found') ||
+    message.includes('unsupported') ||
+    message.includes('unknown') ||
+    message.includes('endpoint')
+  );
+}
+
 export class LocalLLMProvider {
   async complete(prompt) {
-    const settings = await secureStorage.get(['localUrl', 'localModel', 'localApiFormat']);
+    const settings = await secureStorage.get([
+      'localUrl',
+      'localModel',
+      'localApiFormat',
+      'localStrictLoopback',
+    ]);
 
     if (!settings.localUrl) {
       throw new Error('Local LLM server URL not configured');
@@ -51,18 +72,46 @@ export class LocalLLMProvider {
       throw new Error('Local LLM model name not configured');
     }
 
-    const apiFormat = settings.localApiFormat || 'openai';
+    const requireLoopback = isLoopbackRestrictionEnabled(settings.localStrictLoopback, true);
+    const urlValidation = requireLoopback
+      ? validateLoopbackHttpUrl(settings.localUrl, { label: 'Local LLM server URL' })
+      : validateHttpUrl(settings.localUrl, { label: 'Local LLM server URL' });
+    if (!urlValidation.valid) {
+      throw new Error(urlValidation.message);
+    }
 
-    if (apiFormat === 'ollama') {
-      return this.completeOllama(prompt, settings);
-    } else {
-      return this.completeOpenAIFormat(prompt, settings);
+    const resolved = {
+      ...settings,
+      localUrl: urlValidation.normalizedUrl,
+    };
+
+    const format = String(settings.localApiFormat || 'auto').toLowerCase();
+    if (format === 'openai') {
+      return this.completeOpenAIFormat(prompt, resolved);
+    }
+
+    if (format === 'ollama') {
+      return this.completeOllamaFormat(prompt, resolved);
+    }
+
+    // Auto-detect: try OpenAI-compatible first, then fallback to Ollama native.
+    try {
+      return await this.completeOpenAIFormat(prompt, resolved);
+    } catch (openAIError) {
+      if (!shouldTryOtherFormat(openAIError)) {
+        throw openAIError;
+      }
+
+      try {
+        return await this.completeOllamaFormat(prompt, resolved);
+      } catch (ollamaError) {
+        throw new Error(`Local LLM API error: ${ollamaError.message}`);
+      }
     }
   }
 
-  // OpenAI-compatible API format (LM Studio, LocalAI, etc.)
   async completeOpenAIFormat(prompt, settings) {
-    const url = settings.localUrl.replace(/\/$/, '') + '/v1/chat/completions';
+    const url = `${settings.localUrl}/v1/chat/completions`;
     const basePayload = {
       model: settings.localModel,
       messages: [
@@ -113,9 +162,8 @@ export class LocalLLMProvider {
     return data.choices[0]?.message?.content || '';
   }
 
-  // Ollama native API format
-  async completeOllama(prompt, settings) {
-    const url = settings.localUrl.replace(/\/$/, '') + '/api/generate';
+  async completeOllamaFormat(prompt, settings) {
+    const url = `${settings.localUrl}/api/generate`;
     const basePayload = {
       model: settings.localModel,
       prompt: `${JSON_ONLY_SYSTEM_PROMPT}\n\n${prompt}`,
@@ -148,11 +196,11 @@ export class LocalLLMProvider {
         continue;
       }
 
-      throw new Error(parseApiError(rawError, response.status, 'Ollama API error'));
+      throw new Error(parseApiError(rawError, response.status, 'Local LLM API error'));
     }
 
     if (!data) {
-      throw new Error('Ollama API error: empty completion response');
+      throw new Error('Local LLM API error: empty completion response');
     }
 
     return data.response || '';
