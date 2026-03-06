@@ -37,19 +37,6 @@ const CHANGE_TYPES = [
 ];
 
 /**
- * Create a URL-safe slug from a string
- */
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 50);
-}
-
-/**
  * Get the current git branch name
  */
 function getCurrentBranch() {
