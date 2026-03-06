@@ -36,7 +36,6 @@ const CHANGE_TYPES = [
   { value: 'revert', description: 'Revert a previous commit' },
 ];
 
-
 /**
  * Get the current git branch name
  */
