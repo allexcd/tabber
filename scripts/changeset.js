@@ -36,18 +36,6 @@ const CHANGE_TYPES = [
   { value: 'revert', description: 'Revert a previous commit' },
 ];
 
-/**
- * Create a URL-safe slug from a string
- */
-function slugify(text) {
-  return text
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, '')
-    .replace(/\s+/g, '-')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '')
-    .slice(0, 50);
-}
 
 /**
  * Get the current git branch name
