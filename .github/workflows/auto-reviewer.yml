@@ -1,0 +1,29 @@
+name: Auto-assign reviewer
+
+on:
+  pull_request:
+    types: [opened, ready_for_review]
+
+jobs:
+  assign-reviewer:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const reviewer = "NashCole";
+            const author = context.payload.pull_request.user.login;
+
+            if (author === reviewer) {
+              console.log(`Skipping: PR author is the reviewer (${reviewer})`);
+              return;
+            }
+
+            await github.rest.pulls.requestReviewers({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.payload.pull_request.number,
+              reviewers: [reviewer]
+            });
