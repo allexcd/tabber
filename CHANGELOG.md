@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-03-16
+
+### Added
+
+- Add custom grouping rules with URL pattern matching.
+- Replace timestamp-based changeset filenames with memorable random names using random-word-slugs package
+
+### Fixed
+
+- Unify local model support under a single Local LLM provider (Ollama, LM Studio, and OpenAI-compatible servers) with configurable API format. Before: "local" Ollama URL could be any host, so misconfiguration could send tab metadata to a remote endpoint. Now Local LLM URLs are restricted to loopback hosts by default (`localhost`, `127.0.0.1`, `[::1]`), with an explicit settings toggle to allow remote URLs when intentionally needed.
+- Remove the unused slugify helper from the changeset script to fix CodeQL alert #2. No runtime behavior changes; formatting updated to satisfy Prettier.
+- Add a one-time Local LLM upgrade warning when an existing non-loopback `localUrl` is blocked by Local-Only URL Restriction, with quick actions to allow remote URLs or dismiss the notice. Improve Local LLM loopback validation errors to explicitly point users to the Local-Only URL Restriction toggle in Settings.
+- Fix version bump automation to update footer version text in both settings and custom rules pages.
+
+### Technical
+
+- Build: Update changelog.md during release
+- CI: Auto-assign NashCole as reviewer on every opened or ready-for-review pull request.
+
+### Documentation
+
+- Docs: Add release process steps documentation
+- Docs: Add conventional commit types guide and update project documentation
+
 ## [1.1.0] - 2026-03-05
 
 ### Added
