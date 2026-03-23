@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@commitlint/cli": "^20.4.2",
-    "@commitlint/config-conventional": "^20.4.2",
+    "@commitlint/config-conventional": "^20.5.0",
     "claude-supervisor": "^0.1.2",
     "eslint": "^8.57.1",
     "husky": "^9.0.11",
