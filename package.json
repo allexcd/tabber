@@ -29,7 +29,7 @@
     "agents:collect": "collect-learnings.sh --yes"
   },
   "devDependencies": {
-    "@commitlint/cli": "^20.5.0",
+    "@commitlint/cli": "^20.5.2",
     "@commitlint/config-conventional": "^20.5.0",
     "claude-supervisor": "^0.2.0",
     "eslint": "^8.57.1",
